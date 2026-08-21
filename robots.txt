@@ -1,0 +1,4 @@
+# Gestão CCE — robots.txt
+User-agent: *
+Disallow: /admin.html
+Disallow: /register.html
