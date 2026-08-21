@@ -1,4 +1,7 @@
 
+// Ensure global supabaseClient reference
+var supabaseClient = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+
 // Helper: Normalização para busca insensível a acentos e maiúsculas
 function normStr(str) {
   if (!str) return '';
