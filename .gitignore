@@ -1,0 +1,9 @@
+# Environment & Private Secrets
+.env
+.env.local
+.env.*.local
+
+# Logs e arquivos temporários
+*.log
+.DS_Store
+Thumbs.db
