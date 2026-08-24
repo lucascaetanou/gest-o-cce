@@ -1821,3 +1821,28 @@ select option:checked {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.08);
 }
+
+/* ============================================
+   DONUT CHART & CUSTOM LEGEND COMPONENT
+   ============================================ */
+.donut-chart-container {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.donut-legend-container {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .donut-chart-container {
+    flex-direction: column;
+    text-align: center;
+  }
+  .donut-legend-container {
+    width: 100%;
+  }
+}
+

@@ -192,6 +192,10 @@ function updateMedicosRegiaoChart(doctors, showAllRegions) {
   const ctx = document.getElementById('chartMedicosRegiao');
   if (!ctx) return;
 
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const textColor = isLight ? '#475569' : '#8b8fa3';
+  const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+
   const dataMap = {};
   const source = doctors || [];
   source.filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
@@ -211,36 +215,91 @@ function updateMedicosRegiaoChart(doctors, showAllRegions) {
       datasets: [{
         label: 'Médicos Ativos',
         data: data,
-        backgroundColor: 'rgba(124, 58, 237, 0.75)',
+        backgroundColor: isLight ? 'rgba(124, 58, 237, 0.85)' : 'rgba(124, 58, 237, 0.75)',
         borderColor: '#7c3aed',
-        borderWidth: 1,
-        borderRadius: 6
+        borderWidth: 1.5,
+        borderRadius: 8,
+        hoverBackgroundColor: '#6d28d9'
       }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: true,
+      maintainAspectRatio: false,
       scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b8fa3' } },
-        x: { grid: { display: false }, ticks: { color: '#8b8fa3', maxRotation: 35, minRotation: 0, font: { size: 10 } } }
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: textColor, maxRotation: 25, minRotation: 0, font: { family: 'Inter', size: 10 } }
+        }
       },
-      plugins: { legend: { display: false } }
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(17, 22, 56, 0.95)',
+          titleColor: isLight ? '#0f172a' : '#f0f0ff',
+          bodyColor: isLight ? '#475569' : '#8b8fa3',
+          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          cornerRadius: 8,
+          padding: 10,
+          titleFont: { family: 'Inter', weight: '700' },
+          bodyFont: { family: 'Inter' }
+        }
+      }
     }
   });
 }
 
 function updateTipoProfissionalChart(doctors) {
   const ctx = document.getElementById('chartTipoProfissional');
+  const legendContainer = document.getElementById('donutCustomLegend');
+  const centerVal = document.getElementById('donutCenterVal');
+  const badgeTotal = document.getElementById('badgeTotalProfissionais');
   if (!ctx || !doctors) return;
 
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const borderColor = isLight ? '#ffffff' : '#111638';
+
+  // Cores modernas por perfil
+  const colorPalette = {
+    'CRM BRASIL': '#10b981',       // Emerald
+    'MFC CELETISTA': '#f59e0b',    // Amber
+    'INTERCAMBISTA': '#f43f5e',    // Rose
+    'BOLSISTA': '#06b6d4',         // Cyan
+    'TUTOR': '#8b5cf6',            // Violet
+    'NÃO INFORMADO': '#3b82f6',     // Blue
+    'OUTROS': '#64748b'            // Slate
+  };
+
   const dataMap = {};
-  doctors.forEach(d => {
-    const perfil = d.perfil_profissional || 'Não Informado';
+  let totalAtivos = 0;
+
+  doctors.filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
+    let perfil = (d.perfil_profissional || 'Não Informado').trim().toUpperCase();
+    if (perfil.includes('CRM') && perfil.includes('BRASIL')) perfil = 'CRM BRASIL';
+    else if (perfil.includes('CELETISTA')) perfil = 'MFC CELETISTA';
+    else if (perfil.includes('INTERCAMBISTA')) perfil = 'INTERCAMBISTA';
+    else if (perfil.includes('BOLSISTA')) perfil = 'BOLSISTA';
+    else if (perfil.includes('TUTOR')) perfil = 'TUTOR';
+    else if (!perfil || perfil === 'NÃO INFORMADO') perfil = 'NÃO INFORMADO';
+
     dataMap[perfil] = (dataMap[perfil] || 0) + 1;
+    totalAtivos++;
   });
 
-  const labels = Object.keys(dataMap);
-  const data = labels.map(l => dataMap[l]);
+  const sortedProfiles = Object.entries(dataMap).sort((a, b) => b[1] - a[1]);
+  const labels = sortedProfiles.map(p => p[0]);
+  const data = sortedProfiles.map(p => p[1]);
+  const backgroundColors = labels.map(l => colorPalette[l] || '#64748b');
 
+  if (centerVal) centerVal.textContent = totalAtivos.toLocaleString('pt-BR');
+  if (badgeTotal) badgeTotal.textContent = `${totalAtivos.toLocaleString('pt-BR')} ativos`;
+
+  // Renderizar Donut Chart
   if (chartTipoProf) chartTipoProf.destroy();
 
   chartTipoProf = new Chart(ctx, {
@@ -249,17 +308,80 @@ function updateTipoProfissionalChart(doctors) {
       labels: labels,
       datasets: [{
         data: data,
-        backgroundColor: ['#10b981', '#7c3aed', '#f59e0b', '#ec4899', '#06b6d4', '#3b82f6'],
-        borderWidth: 2,
-        borderColor: '#111638'
+        backgroundColor: backgroundColors,
+        borderWidth: 2.5,
+        borderColor: borderColor,
+        hoverOffset: 8,
+        borderRadius: 4
       }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: '65%',
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '72%',
       plugins: {
-        legend: { position: 'right', labels: { color: '#f0f0ff', padding: 14, font: { family: 'Inter', size: 11 } } }
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(17, 22, 56, 0.95)',
+          titleColor: isLight ? '#0f172a' : '#f0f0ff',
+          bodyColor: isLight ? '#475569' : '#8b8fa3',
+          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          cornerRadius: 8,
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              const val = context.parsed || 0;
+              const pct = totalAtivos > 0 ? ((val / totalAtivos) * 100).toFixed(1) : 0;
+              return ` ${val.toLocaleString('pt-BR')} médicos (${pct}%)`;
+            }
+          }
+        }
       }
     }
   });
+
+  // Renderizar Legenda Rica Customizada (HTML)
+  if (legendContainer) {
+    legendContainer.innerHTML = '';
+    sortedProfiles.forEach(([perfil, count], idx) => {
+      const color = backgroundColors[idx];
+      const pct = totalAtivos > 0 ? ((count / totalAtivos) * 100).toFixed(1) : 0;
+
+      const row = document.createElement('div');
+      row.className = 'donut-legend-row';
+      row.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.35rem 0.55rem;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
+        cursor: pointer;
+        font-size: 0.82rem;
+      `;
+      row.onmouseover = () => {
+        row.style.background = 'var(--surface-hover)';
+        if (chartTipoProf) chartTipoProf.setActiveElements([{ datasetIndex: 0, index: idx }]);
+        if (chartTipoProf) chartTipoProf.update();
+      };
+      row.onmouseout = () => {
+        row.style.background = 'transparent';
+        if (chartTipoProf) chartTipoProf.setActiveElements([]);
+        if (chartTipoProf) chartTipoProf.update();
+      };
+
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.55rem; min-width: 0;">
+          <span style="width: 9px; height: 9px; border-radius: 50%; background: ${color}; flex-shrink: 0; box-shadow: 0 0 6px ${color}80;"></span>
+          <span style="font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(perfil)}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.55rem; flex-shrink: 0; margin-left: 0.5rem;">
+          <span style="font-weight: 700; color: var(--text-primary);">${count.toLocaleString('pt-BR')}</span>
+          <span style="color: var(--text-muted); font-size: 0.75rem; min-width: 38px; text-align: right;">${pct}%</span>
+        </div>
+      `;
+      legendContainer.appendChild(row);
+    });
+  }
 }

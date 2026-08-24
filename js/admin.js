@@ -199,6 +199,10 @@ function setupThemeToggle() {
         }
         if (window.showToast) window.showToast('Tema Claro ativado', 'info');
       }
+      // Re-renderizar gráficos com o novo tema
+      if (typeof renderDashboardWithCurrentFilter === 'function') {
+        renderDashboardWithCurrentFilter();
+      }
     });
   }
 }
