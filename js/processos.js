@@ -289,7 +289,18 @@ function renderProcessosTable(data) {
   if (!tbody) return;
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:3rem">Nenhum processo encontrado.</td></tr>';
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; padding:3.5rem 1rem;">
+          <div style="max-width:320px; margin:0 auto; color:var(--text-muted);">
+            <i class="fas fa-gavel" style="font-size:2.2rem; opacity:0.4; margin-bottom:0.75rem; display:block;"></i>
+            <div style="font-weight:600; color:var(--text-primary); font-size:1rem; margin-bottom:0.25rem;">Nenhum processo encontrado</div>
+            <div style="font-size:0.85rem; margin-bottom:1rem;">Nenhum processo administrativo corresponde à busca.</div>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('btnLimparFiltrosProcessos')?.click()"><i class="fas fa-undo"></i> Limpar filtros</button>
+          </div>
+        </td>
+      </tr>
+    `;
     return;
   }
 

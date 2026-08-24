@@ -132,9 +132,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // 5. Inicializar Navegação SPA e Modais
+  // 5. Inicializar Navegação SPA, Modais e Alternador de Tema
   setupNavigation();
   setupModalCloseListeners();
+  setupThemeToggle();
 
   // 6. Carregar Módulos do Sistema
   loadDashboardStats();
@@ -162,3 +163,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnRefreshUsers.addEventListener('click', () => loadUsers());
   }
 });
+
+// Alternador de Tema Claro / Escuro (com persistência local)
+function setupThemeToggle() {
+  const btn = document.getElementById('btnThemeToggle');
+  const icon = document.getElementById('themeIcon');
+  const savedTheme = localStorage.getItem('gestao_cce_theme') || 'dark';
+
+  if (savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (icon) {
+      icon.className = 'fas fa-moon';
+      icon.style.color = 'var(--accent-primary)';
+    }
+  }
+
+  if (btn && !btn.dataset.listenerAttached) {
+    btn.dataset.listenerAttached = 'true';
+    btn.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('gestao_cce_theme', 'dark');
+        if (icon) {
+          icon.className = 'fas fa-sun';
+          icon.style.color = 'var(--accent-warning)';
+        }
+        if (window.showToast) window.showToast('Tema Escuro ativado', 'info');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('gestao_cce_theme', 'light');
+        if (icon) {
+          icon.className = 'fas fa-moon';
+          icon.style.color = 'var(--accent-primary)';
+        }
+        if (window.showToast) window.showToast('Tema Claro ativado', 'info');
+      }
+    });
+  }
+}
+

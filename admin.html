@@ -8,7 +8,7 @@
   <meta name="description" content="Painel de Administração">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body style="display: none;">
   <div class="admin-layout">
@@ -87,7 +87,11 @@
           <h1 id="pageTitle">Dashboard</h1>
           <p id="pageSubtitle">Visão geral do sistema</p>
         </div>
-        <div class="header-right">
+                <div class="header-right">
+          <button id="btnThemeToggle" class="btn btn-ghost btn-sm" title="Alternar Tema Claro / Escuro" style="border: 1px solid var(--border); padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+            <i class="fas fa-sun" id="themeIcon" style="color: var(--accent-warning);"></i>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">Tema</span>
+          </button>
           <div class="admin-avatar">
             <i class="fas fa-user-shield"></i>
             <span id="adminName">Admin</span>
@@ -107,7 +111,23 @@
               <h2 class="dash-title">Programa Mais Médicos</h2>
               <p class="dash-subtitle" id="dashSubtitle">Lista atualizada em --/--/---- • --- municípios com profissionais ativos</p>
             </div>
-            <a href="https://www.gov.br/saude/pt-br/composicao/sgtes/mais-medicos/painel" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm" style="background:var(--surface); border-color:var(--border); display:inline-flex; align-items:center; gap:0.5rem; text-decoration:none;"><i class="fas fa-external-link-alt" style="color:var(--accent-secondary)"></i> Painel oficial (GOV)</a>
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-secondary); padding: 0.4rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <i class="fas fa-filter" style="color: var(--accent-primary); font-size: 0.85rem;"></i>
+                <label for="selectRegiaoDashboard" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Região:</label>
+                <select id="selectRegiaoDashboard" style="background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer; font-weight: 600;">
+                  <option value="TODAS">Todas as Regiões</option>
+                  <option value="FORTALEZA">Fortaleza</option>
+                  <option value="LITORAL LESTE">Litoral Leste / Jaguaribe</option>
+                  <option value="SOBRAL">Sobral</option>
+                  <option value="SERTAO CENTRAL">Sertão Central</option>
+                  <option value="CARIRI">Cariri</option>
+                </select>
+              </div>
+              <a href="https://www.gov.br/saude/pt-br/composicao/sgtes/mais-medicos/painel" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm" style="background:var(--surface); border-color:var(--border); display:inline-flex; align-items:center; gap:0.5rem; text-decoration:none;">
+                <i class="fas fa-external-link-alt" style="color:var(--accent-secondary)"></i> Painel oficial (GOV)
+              </a>
+            </div>
           </div>
 
           <!-- Stats Grid (6 cards) -->
@@ -722,7 +742,7 @@
   </div>
   
   <!-- Modal de Detalhes do Médico -->
-  <div id="modalMedico" class="modal-overlay">
+  <div id="modalMedico" class="modal-overlay drawer-mode">
     <div class="modal-content fade-in">
       <div class="modal-header">
         <h2><i class="fas fa-user-md" style="margin-right:8px; color:var(--accent-primary)"></i> Detalhes do Médico</h2>
@@ -735,7 +755,7 @@
   </div>
 
   <!-- Modal de Detalhes do Supervisor -->
-  <div id="modalSupervisor" class="modal-overlay">
+  <div id="modalSupervisor" class="modal-overlay drawer-mode">
     <div class="modal-content fade-in">
       <div class="modal-header">
         <h2><i class="fas fa-chalkboard-teacher" style="margin-right:8px; color:var(--accent-info)"></i> Detalhes do Supervisor</h2>
@@ -748,7 +768,7 @@
   </div>
 
   <!-- Modal de Detalhes do Tutor -->
-  <div id="modalTutor" class="modal-overlay">
+  <div id="modalTutor" class="modal-overlay drawer-mode">
     <div class="modal-content fade-in" style="max-width:800px">
       <div class="modal-header">
         <h2><i class="fas fa-user-graduate" style="margin-right:8px; color:var(--accent-secondary)"></i> Detalhes do Tutor</h2>
@@ -828,17 +848,17 @@
 
   <!-- Módulos da Aplicação Gestão CCE -->
   <script src="js/utils.js?v=4"></script>
-  <script src="js/dashboard.js?v=3"></script>
-  <script src="js/medicos.js?v=3"></script>
+  <script src="js/dashboard.js?v=4"></script>
+  <script src="js/medicos.js?v=4"></script>
   <script src="js/referencias.js?v=3"></script>
   <script src="js/supervisores.js?v=3"></script>
   <script src="js/tutores.js?v=3"></script>
   <script src="js/materiais.js?v=3"></script>
-  <script src="js/processos.js?v=3"></script>
+  <script src="js/processos.js?v=4"></script>
   <script src="js/users.js?v=3"></script>
 
   <!-- Orquestrador Principal -->
-  <script src="js/admin.js?v=3"></script>
+  <script src="js/admin.js?v=4"></script>
   <script src="js/magic-bento.js?v=2"></script>
 <!-- Modal Novo Material -->
         <div class="modal-overlay" id="modalMaterial">
@@ -879,7 +899,7 @@
         </div>
 
   <!-- Modal de Detalhes do Processo -->
-  <div id="modalProcesso" class="modal-overlay">
+  <div id="modalProcesso" class="modal-overlay drawer-mode">
     <div class="modal-content fade-in" style="max-width: 750px;">
       <div class="modal-header">
         <h2>Detalhes do Processo</h2>
