@@ -51,14 +51,104 @@ function setupDashboardRegionFilter() {
   }
 }
 
+// Helper: Mapa de Município -> Macro Região
+function getCityToMacroMap() {
+  const map = {};
+  (window.dashboardReferencias || []).forEach(r => {
+    if (r.municipio_dsei) {
+      map[normStr(r.municipio_dsei)] = normStr(r.macro_regiao || '');
+    }
+  });
+  return map;
+}
+
+// Helper: Checagem inteligente de vínculo do médico com a macrorregião
+function doctorMatchesRegion(d, selectedRegion, cityToMacroMap) {
+  if (!selectedRegion || selectedRegion === 'TODAS') return true;
+
+  const selNorm = normStr(selectedRegion);
+  const cityNorm = normStr(d.municipio_atuacao);
+  const cirNorm = normStr(d.regiao_saude);
+
+  // 1. Checar mapeamento de município da tabela de referências
+  if (cityNorm && cityToMacroMap[cityNorm]) {
+    const macro = cityToMacroMap[cityNorm];
+    if (macro.includes(selNorm) || selNorm.includes(macro)) return true;
+    if (selNorm.includes('norte') && (macro.includes('sobral') || macro.includes('norte'))) return true;
+    if (selNorm.includes('sobral') && (macro.includes('sobral') || macro.includes('norte'))) return true;
+  }
+
+  // 2. Checar correspondência direta
+  if (cirNorm.includes(selNorm) || cityNorm.includes(selNorm)) return true;
+
+  // 3. Regiões e CIRs conhecidas do Ceará
+  if (selNorm.includes('cariri')) {
+    const caririKeywords = ['crato', 'juazeiro', 'barbalha', 'brejo santo', 'iguatu', 'ico', 'cariri', '16', '17', '18', '19', '20'];
+    return caririKeywords.some(kw => cirNorm.includes(kw) || cityNorm.includes(kw));
+  }
+  if (selNorm.includes('sertao') || selNorm.includes('central')) {
+    const sertaoKeywords = ['quixada', 'quixeramobim', 'caninde', 'taua', 'sertao', '5', '12', '13'];
+    return sertaoKeywords.some(kw => cirNorm.includes(kw) || cityNorm.includes(kw));
+  }
+  if (selNorm.includes('sobral') || selNorm.includes('norte')) {
+    const sobralKeywords = ['sobral', 'acarau', 'camocim', 'crateus', 'tiangua', '7', '8', '9', '10', '11'];
+    return sobralKeywords.some(kw => cirNorm.includes(kw) || cityNorm.includes(kw));
+  }
+  if (selNorm.includes('litoral') || selNorm.includes('jaguaribe')) {
+    const litoralKeywords = ['limoeiro', 'russas', 'aracati', 'jaguaribe', 'litoral', '14', '15'];
+    return litoralKeywords.some(kw => cirNorm.includes(kw) || cityNorm.includes(kw));
+  }
+  if (selNorm.includes('fortaleza')) {
+    const fortKeywords = ['fortaleza', 'caucaia', 'maracanau', 'baturite', 'cascavel', '1', '2', '3', '4'];
+    return fortKeywords.some(kw => cirNorm.includes(kw) || cityNorm.includes(kw));
+  }
+
+  return false;
+}
+
+// Helper: Checagem inteligente para a lista de alertas
+function referenceMatchesRegion(r, selectedRegion) {
+  if (!selectedRegion || selectedRegion === 'TODAS') return true;
+  const selNorm = normStr(selectedRegion);
+  const macroNorm = normStr(r.macro_regiao || '');
+  const cirNorm = normStr(r.regiao_saude || '');
+  const munNorm = normStr(r.municipio_dsei || '');
+
+  if (macroNorm.includes(selNorm) || selNorm.includes(macroNorm)) return true;
+  if (cirNorm.includes(selNorm) || munNorm.includes(selNorm)) return true;
+
+  if (selNorm.includes('cariri')) {
+    const caririKeywords = ['crato', 'juazeiro', 'barbalha', 'brejo santo', 'iguatu', 'ico', 'cariri', '16', '17', '18', '19', '20'];
+    return caririKeywords.some(kw => macroNorm.includes(kw) || cirNorm.includes(kw) || munNorm.includes(kw));
+  }
+  if (selNorm.includes('sertao') || selNorm.includes('central')) {
+    const sertaoKeywords = ['quixada', 'quixeramobim', 'caninde', 'taua', 'sertao', '5', '12', '13'];
+    return sertaoKeywords.some(kw => macroNorm.includes(kw) || cirNorm.includes(kw) || munNorm.includes(kw));
+  }
+  if (selNorm.includes('sobral') || selNorm.includes('norte')) {
+    const sobralKeywords = ['sobral', 'acarau', 'camocim', 'crateus', 'tiangua', '7', '8', '9', '10', '11'];
+    return sobralKeywords.some(kw => macroNorm.includes(kw) || cirNorm.includes(kw) || munNorm.includes(kw));
+  }
+  if (selNorm.includes('litoral') || selNorm.includes('jaguaribe')) {
+    const litoralKeywords = ['limoeiro', 'russas', 'aracati', 'jaguaribe', 'litoral', '14', '15'];
+    return litoralKeywords.some(kw => macroNorm.includes(kw) || cirNorm.includes(kw) || munNorm.includes(kw));
+  }
+  if (selNorm.includes('fortaleza')) {
+    const fortKeywords = ['fortaleza', 'caucaia', 'maracanau', 'baturite', 'cascavel', '1', '2', '3', '4'];
+    return fortKeywords.some(kw => macroNorm.includes(kw) || cirNorm.includes(kw) || munNorm.includes(kw));
+  }
+  return false;
+}
+
 function renderDashboardWithCurrentFilter() {
   const allDoctors = window.dashboardAllDoctors || [];
   const selectedRegion = window.dashboardSelectedRegion;
+  const cityToMacroMap = getCityToMacroMap();
 
-  // Filtrar médicos conforme a região selecionada
+  // Filtrar médicos com mapeamento inteligente
   let filteredDoctors = allDoctors;
   if (selectedRegion && selectedRegion !== 'TODAS') {
-    filteredDoctors = allDoctors.filter(d => normStr(d.regiao_saude).includes(normStr(selectedRegion)));
+    filteredDoctors = allDoctors.filter(d => doctorMatchesRegion(d, selectedRegion, cityToMacroMap));
   }
 
   // Cálculos
@@ -117,7 +207,7 @@ function renderAlertasList() {
   // Filtrar referências por região se aplicável
   let alertas = referencias.filter(r => r.vagas_desocupadas > 0);
   if (selectedRegion && selectedRegion !== 'TODAS') {
-    alertas = alertas.filter(r => normStr(r.macro_regiao).includes(normStr(selectedRegion)) || normStr(r.regiao_saude).includes(normStr(selectedRegion)));
+    alertas = alertas.filter(r => referenceMatchesRegion(r, selectedRegion));
   }
 
   const sortMethod = sortSelect ? sortSelect.value : 'desc';
