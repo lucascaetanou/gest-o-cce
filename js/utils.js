@@ -92,3 +92,67 @@ function downloadCSV(csvContent, filename) {
   link.click();
   document.body.removeChild(link);
 }
+
+// --- Modern Floating Toast Notification System ---
+function showToast(message, type = 'info', duration = 4000) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast-item toast-${type}`;
+
+  let iconClass = 'fa-info-circle';
+  if (type === 'success') iconClass = 'fa-check-circle';
+  else if (type === 'error') iconClass = 'fa-exclamation-circle';
+  else if (type === 'warning') iconClass = 'fa-exclamation-triangle';
+
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'toast-icon';
+  const icon = document.createElement('i');
+  icon.className = `fas ${iconClass}`;
+  iconDiv.appendChild(icon);
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'toast-content';
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'toast-message';
+  msgDiv.textContent = message;
+  contentDiv.appendChild(msgDiv);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.onclick = () => toast.remove();
+
+  toast.appendChild(iconDiv);
+  toast.appendChild(contentDiv);
+  toast.appendChild(closeBtn);
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-fade-out');
+    setTimeout(() => {
+      if (toast.parentElement) toast.remove();
+    }, 300);
+  }, duration);
+}
+
+function showAlert(message, type = 'error') {
+  const alertEl = document.getElementById('alertMessage');
+  if (alertEl) {
+    alertEl.textContent = message;
+    alertEl.className = `alert ${type}`;
+    alertEl.style.display = 'block';
+    setTimeout(() => { alertEl.style.display = 'none'; }, 6000);
+  }
+  showToast(message, type);
+}
+
+window.showToast = showToast;
+window.showAlert = showAlert;
+
