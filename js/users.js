@@ -1,12 +1,12 @@
 // ============================================
-// Gestão CCE — Módulo de Gestão de Usuários e Contas
+// Gestão CCE — Módulo de Gestão de Usuários
 // ============================================
 
-// Carrega tabela de usuários do sistema
 async function loadUsers() {
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
-
+  
+  // Loading state (safe, no user data)
   tbody.innerHTML = '';
   const loadingRow = document.createElement('tr');
   const loadingCell = document.createElement('td');
@@ -26,14 +26,17 @@ async function loadUsers() {
 
     tbody.innerHTML = '';
 
-    const nonAdminUsers = users.filter(u => u.role !== 'ADMIN');
+    const nonAdminUsers = (users || []).filter(u => {
+      const r = (u.role || '').toUpperCase();
+      return r !== 'ADMIN';
+    });
     
     if (nonAdminUsers.length === 0) {
       const emptyRow = document.createElement('tr');
       const emptyCell = document.createElement('td');
       emptyCell.colSpan = 5;
       emptyCell.style.cssText = 'text-align:center; color:var(--text-muted); padding:3rem;';
-      emptyCell.textContent = 'Nenhum usuário encontrado.';
+      emptyCell.textContent = 'Nenhum usuário pendente ou cadastrado no momento.';
       emptyRow.appendChild(emptyCell);
       tbody.appendChild(emptyRow);
       return;
@@ -42,18 +45,22 @@ async function loadUsers() {
     nonAdminUsers.forEach(user => {
       const tr = document.createElement('tr');
 
+      // Name
       const tdName = document.createElement('td');
-      tdName.textContent = user.name || '-';
+      tdName.textContent = user.name || user.full_name || '-';
       tr.appendChild(tdName);
 
+      // Email
       const tdEmail = document.createElement('td');
       tdEmail.textContent = user.email || '-';
       tr.appendChild(tdEmail);
 
+      // Phone
       const tdPhone = document.createElement('td');
       tdPhone.textContent = user.phone || '-';
       tr.appendChild(tdPhone);
 
+      // Status badge
       const tdStatus = document.createElement('td');
       const badge = document.createElement('span');
       if (user.status === 'APPROVED') {
@@ -69,6 +76,7 @@ async function loadUsers() {
       tdStatus.appendChild(badge);
       tr.appendChild(tdStatus);
 
+      // Actions
       const tdActions = document.createElement('td');
       tdActions.style.cssText = 'display:flex; gap:0.5rem;';
 
@@ -87,7 +95,7 @@ async function loadUsers() {
         tdActions.appendChild(btnReject);
       } else {
         const resolvedSpan = document.createElement('span');
-        resolvedSpan.style.cssText = 'font-size:0.8rem; color:var(--text-muted);';
+        resolvedSpan.style.cssText = 'color:var(--text-muted); font-size:0.8rem;';
         resolvedSpan.textContent = 'Resolvido';
         tdActions.appendChild(resolvedSpan);
       }
@@ -97,17 +105,15 @@ async function loadUsers() {
     });
 
   } catch (error) {
-    console.error('Erro ao carregar usuários:', error);
-    showAlert('Erro ao carregar lista de usuários.', 'error');
+    console.error(error);
+    showAlert('Erro ao carregar usuários.', 'error');
   }
 }
 
-// Atualiza status de aprovação de um usuário
-async function updateStatus(userId, newStatus) {
-  if (!supabaseClient) return;
 
-  const actionText = newStatus === 'APPROVED' ? 'aprovar' : 'rejeitar';
-  if (!confirm(`Tem certeza que deseja ${actionText} este usuário?`)) return;
+async function updateStatus(userId, newStatus) {
+  const action = newStatus === 'APPROVED' ? 'APROVAR' : 'REJEITAR';
+  if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) return;
 
   try {
     const { error } = await supabaseClient
@@ -118,10 +124,11 @@ async function updateStatus(userId, newStatus) {
     if (error) throw error;
 
     showAlert(`Usuário ${newStatus === 'APPROVED' ? 'aprovado' : 'rejeitado'} com sucesso!`, 'success');
+    
+    // Refresh both table and dashboard
     loadUsers();
+    loadDashboardStats();
 
   } catch (error) {
-    console.error('Erro ao atualizar status:', error);
-    showAlert('Erro ao atualizar status do usuário.', 'error');
+    showAlert('Erro ao atualizar usuário.', 'error');
   }
-}

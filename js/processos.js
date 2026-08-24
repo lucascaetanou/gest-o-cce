@@ -2,190 +2,281 @@
 // Gestão CCE — Módulo de Processos Administrativos
 // ============================================
 
-window.processosData = [];
-
-// Fuzzy Match entre demandas do processo e nomes de médicos
 function matchMedicoProcesso(docName, processo) {
   if (!docName || !processo) return false;
   const d = normStr(docName);
   if (!d || d === 'vaga sem profissional' || d.length < 3) return false;
 
-  const desc = normStr(processo.descricao_demanda || '');
-  const sei = normStr(processo.numero_sei || '');
-  const equipe = normStr(processo.equipe_responsavel || '');
+  const intStr = normStr(processo.interessado);
+  const descStr = normStr(processo.descricao_demanda);
 
-  if (desc.includes(d) || sei.includes(d) || equipe.includes(d)) return true;
+  // 1. Checa 'interessado' somente se houver conteúdo válido (minimo 3 caracteres)
+  if (intStr && intStr.length >= 3) {
+    // Nome completo do médico contido no interessado
+    if (intStr.includes(d)) return true;
+    // Interessado contido no nome do médico (apenas se interessado tiver tamanho relevante >= 6)
+    if (d.includes(intStr) && intStr.length >= 6) return true;
 
-  const parts = d.split(' ').filter(p => p.length > 2);
-  if (parts.length >= 2) {
-    const firstTwo = parts[0] + ' ' + parts[1];
-    const firstLast = parts[0] + ' ' + parts[parts.length - 1];
-    if (desc.includes(firstTwo) || desc.includes(firstLast)) return true;
+    // Match palavra a palavra (primeiro nome + ao menos 1 sobrenome com no minimo 3 letras)
+    const dWords = d.split(/\s+/).filter(w => w.length >= 3);
+    const intWords = intStr.split(/\s+/).filter(w => w.length >= 3);
+    if (dWords.length >= 2 && intWords.length >= 2) {
+      const firstMatch = (dWords[0] === intWords[0]);
+      const secondMatch = dWords.slice(1).some(w => intWords.includes(w));
+      if (firstMatch && secondMatch) return true;
+    }
   }
+
+  // 2. Checa 'descricao_demanda' somente se nome do médico estiver presente nela
+  if (descStr && descStr.length >= 6 && descStr.includes(d)) {
+    return true;
+  }
+
   return false;
 }
 
-// Carrega lista principal de processos administrativos
+
+
+
+window.processosData = [];
+
 async function loadProcessos() {
   const tbody = document.getElementById('processosTableBody');
   if (!tbody) return;
 
   try {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:3rem"><i class="fas fa-spinner fa-spin"></i> Carregando processos...</td></tr>';
-
-    const { data: processos, error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from('processos_administrativos')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-
-    window.processosData = processos || [];
-
+    window.processosData = data || [];
+    renderProcessosTable(window.processosData);
     updateProcessosDashboard(window.processosData);
     populateEquipesFilter(window.processosData);
-    renderProcessosTable(window.processosData);
-
-  } catch (error) {
-    console.error('Erro ao carregar processos:', error);
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar processos administrativos.</td></tr>';
+  } catch (err) {
+    console.error('Erro ao buscar processos:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar processos: ${escapeHTML(err.message)}</td></tr>`;
   }
 }
 
-// Atualiza o Dashboard de Processos (Cards de Métricas e Gráficos)
-function updateProcessosDashboard(data) {
-  const total = data.length;
-  let emAndamento = 0;
-  let concluidos = 0;
-  let pendentes = 0;
 
-  const statusCounts = {};
-  const interessadosCounts = {};
-  const equipesCounts = {};
+function updateProcessosDashboard(data) {
+  if (!data) return;
+
+  const total = data.length;
+  let analise = 0;
+  let sobrestado = 0;
+  let concluido = 0;
+  let outros = 0;
+  let medicosCount = 0;
+  let orgaosCount = 0;
+
+  const statusMap = {};
+  const equipeMap = {};
+
+  const keywordsOrgao = [
+    'SECRETARIA', 'SMS', 'PREFEITURA', 'CONSELHO', 'COSEMS', 'PROCURADORIA', 
+    'VARA', 'UNIVERSIDADE', 'UFC', 'DISTRITO', 'DSEI', 'POLICIA', 'POLÍCIA', 
+    'SINDICATO', 'UNIAO', 'UNIÃO', 'MINISTERIO', 'MINISTÉRIO', 'GOVERNO'
+  ];
 
   data.forEach(p => {
-    const st = (p.status || 'NÃO INFORMADO').toUpperCase();
-    const inte = p.interessado || 'NÃO INFORMADO';
-    const eq = p.equipe_responsavel || 'NÃO INFORMADA';
+    // Status
+    const st = (p.status_processo || 'NÃO INFORMADO').toUpperCase().trim();
+    statusMap[st] = (statusMap[st] || 0) + 1;
 
-    statusCounts[st] = (statusCounts[st] || 0) + 1;
-    interessadosCounts[inte] = (interessadosCounts[inte] || 0) + 1;
-    equipesCounts[eq] = (equipesCounts[eq] || 0) + 1;
+    if (st.includes('ANÁLISE') || st.includes('ANALISE')) analise++;
+    else if (st.includes('SOBRESTADO')) sobrestado++;
+    else if (st.includes('CONCLUÍDO') || st.includes('CONCLUIDO')) concluido++;
+    else outros++;
 
-    if (st.includes('ANDAMENTO') || st.includes('ANÁLISE')) emAndamento++;
-    else if (st.includes('CONCLUÍDO') || st.includes('ARQUIVADO')) concluidos++;
-    else pendentes++;
+    // Equipes
+    const eq = (p.equipe_responsavel || 'NÃO INFORMADA').toUpperCase().trim();
+    equipeMap[eq] = (equipeMap[eq] || 0) + 1;
+
+    // Interessados (Médico vs Órgão Público/Secretaria)
+    const intStr = (p.interessado || '').toUpperCase().trim();
+    const vinculoStr = (p.vinculo_medico || '').toUpperCase().trim();
+    const isOrgao = keywordsOrgao.some(kw => intStr.includes(kw));
+
+    if (vinculoStr.includes('CRM') || vinculoStr.includes('RMS')) {
+      if (isOrgao) orgaosCount++;
+      else medicosCount++;
+    } else if (isOrgao) {
+      orgaosCount++;
+    } else if (intStr) {
+      medicosCount++;
+    } else {
+      orgaosCount++;
+    }
   });
 
-  animateCounter('statProcTotal', total);
-  animateCounter('statProcAndamento', emAndamento);
-  animateCounter('statProcConcluidos', concluidos);
-  animateCounter('statProcPendentes', pendentes);
+  // Atualiza Cards
+  const elTotal = document.getElementById('statProcTotal');
+  const elAnalise = document.getElementById('statProcAnalise');
+  const elSobrestado = document.getElementById('statProcSobrestado');
+  const elConcluido = document.getElementById('statProcConcluido');
+  const elMedicos = document.getElementById('statProcMedicos');
+  const elOrgaos = document.getElementById('statProcOrgaos');
 
-  updateProcStatusChart(statusCounts);
-  updateProcInteressadosChart(interessadosCounts);
-  updateProcEquipesChart(equipesCounts);
+  if (elTotal) elTotal.textContent = total;
+  if (elAnalise) elAnalise.textContent = analise;
+  if (elSobrestado) elSobrestado.textContent = sobrestado;
+  if (elConcluido) elConcluido.textContent = concluido;
+  if (elMedicos) elMedicos.textContent = medicosCount;
+  if (elOrgaos) elOrgaos.textContent = orgaosCount;
+
+  // Gráfico 1: Status
+  updateProcStatusChart(statusMap);
+
+  // Gráfico 2: Tipo de Interessado (Médicos vs Órgãos Públicos)
+  updateProcInteressadosChart(medicosCount, orgaosCount);
+
+  // Gráfico 3: Equipes Responsáveis
+  updateProcEquipesChart(equipeMap);
 }
 
-// Gráficos de Processos
-let procStatusChart = null;
-let procInteressadosChart = null;
-let procEquipesChart = null;
 
-function updateProcStatusChart(statusCounts) {
+function updateProcStatusChart(statusMap) {
   const ctx = document.getElementById('chartProcStatus');
   if (!ctx) return;
 
-  const labels = Object.keys(statusCounts);
-  const data = Object.values(statusCounts);
-  const colors = ['#f59e0b', '#06b6d4', '#10b981', '#ef4444', '#8b5cf6', '#6b7280'];
+  const labels = Object.keys(statusMap);
+  const values = Object.values(statusMap);
 
-  if (procStatusChart) {
-    procStatusChart.data.labels = labels;
-    procStatusChart.data.datasets[0].data = data;
-    procStatusChart.update();
+  const colors = [
+    '#f59e0b', // Amber (Em Análise)
+    '#ef4444', // Red (Sobrestado)
+    '#10b981', // Emerald (Concluído)
+    '#3b82f6', // Blue (Em Andamento)
+    '#8b5cf6', // Violet
+    '#64748b'  // Slate
+  ];
+
+  if (chartProcStatus) {
+    chartProcStatus.data.labels = labels;
+    chartProcStatus.data.datasets[0].data = values;
+    chartProcStatus.update();
   } else {
-    procStatusChart = new Chart(ctx, {
+    chartProcStatus = new Chart(ctx, {
       type: 'doughnut',
       data: {
         labels: labels,
-        datasets: [{ data: data, backgroundColor: colors.slice(0, labels.length), borderWidth: 0 }]
+        datasets: [{
+          data: values,
+          backgroundColor: colors.slice(0, labels.length),
+          borderWidth: 0
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: '#8b8fa3', font: { size: 10 } } } },
-        cutout: '65%'
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+          }
+        }
       }
     });
   }
 }
 
-function updateProcInteressadosChart(interessadosCounts) {
+
+function updateProcInteressadosChart(medicosCount, orgaosCount) {
   const ctx = document.getElementById('chartProcInteressados');
   if (!ctx) return;
 
-  const entries = Object.entries(interessadosCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const labels = entries.map(e => e[0].length > 15 ? e[0].substring(0, 15) + '...' : e[0]);
-  const data = entries.map(e => e[1]);
+  const labels = ['Médicos / Profissionais', 'Órgãos Públicos / Secretarias'];
+  const values = [medicosCount, orgaosCount];
+  const colors = ['#3b82f6', '#8b5cf6'];
 
-  if (procInteressadosChart) {
-    procInteressadosChart.data.labels = labels;
-    procInteressadosChart.data.datasets[0].data = data;
-    procInteressadosChart.update();
+  if (chartProcInteressados) {
+    chartProcInteressados.data.datasets[0].data = values;
+    chartProcInteressados.update();
   } else {
-    procInteressadosChart = new Chart(ctx, {
-      type: 'bar',
+    chartProcInteressados = new Chart(ctx, {
+      type: 'pie',
       data: {
         labels: labels,
-        datasets: [{ label: 'Demandas', data: data, backgroundColor: 'rgba(6, 182, 212, 0.6)', borderColor: 'rgba(6, 182, 212, 1)', borderWidth: 1, borderRadius: 4 }]
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 0
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { display: false } },
-          y: { ticks: { color: '#8b8fa3' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+          }
         }
       }
     });
   }
 }
 
-function updateProcEquipesChart(equipesCounts) {
+
+
+function updateProcEquipesChart(equipeMap) {
   const ctx = document.getElementById('chartProcEquipes');
   if (!ctx) return;
 
-  const entries = Object.entries(equipesCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const labels = entries.map(e => e[0].length > 15 ? e[0].substring(0, 15) + '...' : e[0]);
-  const data = entries.map(e => e[1]);
+  // Ordenar equipes por quantidade (top 7)
+  const sorted = Object.entries(equipeMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 7);
 
-  if (procEquipesChart) {
-    procEquipesChart.data.labels = labels;
-    procEquipesChart.data.datasets[0].data = data;
-    procEquipesChart.update();
+  const labels = sorted.map(x => x[0]);
+  const values = sorted.map(x => x[1]);
+
+  if (chartProcEquipes) {
+    chartProcEquipes.data.labels = labels;
+    chartProcEquipes.data.datasets[0].data = values;
+    chartProcEquipes.update();
   } else {
-    procEquipesChart = new Chart(ctx, {
+    chartProcEquipes = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: labels,
-        datasets: [{ label: 'Processos', data: data, backgroundColor: 'rgba(16, 185, 129, 0.6)', borderColor: 'rgba(16, 185, 129, 1)', borderWidth: 1, borderRadius: 4 }]
+        datasets: [{
+          label: 'Qtd. Processos',
+          data: values,
+          backgroundColor: 'rgba(6, 182, 212, 0.75)',
+          borderColor: '#06b6d4',
+          borderWidth: 1,
+          borderRadius: 6
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        indexAxis: 'y', // Bar gráfico horizontal
+        plugins: {
+          legend: { display: false }
+        },
         scales: {
-          x: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { display: false } },
-          y: { ticks: { color: '#8b8fa3' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: '#f1f5f9', font: { family: 'Inter', size: 11, weight: '500' } }
+          }
         }
       }
     });
   }
 }
 
-// Renderiza tabela de processos administrativos
+
+
 function renderProcessosTable(data) {
   const tbody = document.getElementById('processosTableBody');
   if (!tbody) return;
@@ -196,34 +287,35 @@ function renderProcessosTable(data) {
   }
 
   tbody.innerHTML = '';
-
-  data.forEach(proc => {
+  data.forEach(p => {
     const tr = document.createElement('tr');
-    
-    let badgeClass = 'badge-pending';
-    const st = (proc.status || '').toUpperCase();
-    if (st.includes('CONCLUÍDO') || st.includes('ARQUIVADO')) badgeClass = 'badge-approved';
-    else if (st.includes('ANDAMENTO') || st.includes('ANÁLISE')) badgeClass = 'badge-pending';
-    else if (st.includes('PENDENTE') || st.includes('SOBRESTADO')) badgeClass = 'badge-rejected';
 
-    const descResumo = (proc.descricao_demanda || '-').length > 50 
-      ? proc.descricao_demanda.substring(0, 50) + '...' 
-      : proc.descricao_demanda || '-';
+    let badgeClass = 'badge-pending';
+    const st = (p.status_processo || '').toUpperCase();
+    if (st === 'CONCLUÍDO' || st === 'CONCLUIDO') badgeClass = 'badge-approved';
+    else if (st === 'ARQUIVADO') badgeClass = 'badge-rejected';
+    else if (st === 'EM ANÁLISE' || st === 'EM ANALISE') badgeClass = 'badge-pending';
+    else if (st === 'SOBRESTADO') badgeClass = 'badge-rejected';
+    else if (st === 'PENDENTE') badgeClass = 'badge-pending';
+
+    const dataMov = p.data_ultima_movimentacao ? new Date(p.data_ultima_movimentacao + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
 
     tr.innerHTML = `
       <td>
-        <div style="font-weight:600; color:var(--text-primary); font-family:monospace">${escapeHTML(proc.numero_sei || '-')}</div>
+        <div style="font-weight:600; color:var(--text-primary); font-family:monospace; font-size:0.85rem">${escapeHTML(p.numero_sei || '-')}</div>
       </td>
+      <td>${escapeHTML(p.equipe_responsavel || '-')}</td>
       <td>
-        <div style="font-weight:500">${escapeHTML(proc.interessado || '-')}</div>
-        <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(proc.municipio || '')} ${proc.uf ? ' - ' + proc.uf : ''}</div>
+        <div>${escapeHTML(p.municipio || '-')}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(p.uf || '-')}</div>
       </td>
-      <td><span style="font-size:0.85rem">${escapeHTML(proc.equipe_responsavel || '-')}</span></td>
-      <td><span style="font-size:0.85rem; color:var(--text-secondary)">${escapeHTML(descResumo)}</span></td>
-      <td><span style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(proc.data_recebimento || '-')}</span></td>
-      <td><span class="badge ${badgeClass}">${escapeHTML(proc.status || 'Em Análise')}</span></td>
+      <td style="max-width:200px">
+        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${escapeHTML(p.interessado || '-')}</div>
+      </td>
+      <td style="font-size:0.85rem; color:var(--text-secondary)">${dataMov}</td>
+      <td><span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span></td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="viewProcessoDetails('${escapeHTML(proc.id)}')" title="Ver Ficha Completa">
+        <button class="btn btn-ghost btn-sm" onclick="viewProcessoDetails('${escapeHTML(p.id)}')" title="Ver Detalhes">
           <i class="fas fa-eye"></i>
         </button>
       </td>
@@ -232,133 +324,275 @@ function renderProcessosTable(data) {
   });
 }
 
-// Visualização detalhada do processo
-window.viewProcessoDetails = function(id) {
-  const proc = (window.processosData || []).find(p => p.id === id);
-  if (!proc) return;
 
-  const modal = document.getElementById('modalProcesso');
+window.viewProcessoDetails = function(id) {
+  const p = window.processosData.find(x => x.id === id);
+  if (!p) return;
+
   const modalBody = document.getElementById('modalProcessoBody');
-  if (!modal || !modalBody) return;
+  const modal = document.getElementById('modalProcesso');
+  if (!modalBody || !modal) return;
+
+  const dataReceb = p.data_recebimento ? new Date(p.data_recebimento + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+  const dataMov = p.data_ultima_movimentacao ? new Date(p.data_ultima_movimentacao + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+
+  let badgeClass = 'badge-pending';
+  const st = (p.status_processo || '').toUpperCase();
+  if (st === 'CONCLUÍDO' || st === 'CONCLUIDO') badgeClass = 'badge-approved';
+  else if (st === 'ARQUIVADO' || st === 'SOBRESTADO') badgeClass = 'badge-rejected';
 
   modalBody.innerHTML = `
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem">
       <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-secondary); font-size:0.9rem; margin-bottom:1rem; text-transform:uppercase; border-bottom:1px solid var(--border); padding-bottom:0.5rem">
-          Identificação do Processo
-        </h4>
+        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Identificação</h4>
         <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Nº Processo SEI:</span> <strong style="font-family:monospace; color:var(--text-primary)">${escapeHTML(proc.numero_sei || '-')}</strong></div>
-          <div><span style="color:var(--text-secondary)">Equipe Responsável:</span> <span>${escapeHTML(proc.equipe_responsavel || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Data Recebimento:</span> <span>${escapeHTML(proc.data_recebimento || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Localidade:</span> <span>${escapeHTML(proc.municipio || '-')} / ${escapeHTML(proc.uf || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Vínculo Médico:</span> <span>${escapeHTML(proc.vinculo_medico || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Status:</span> <span class="badge badge-approved">${escapeHTML(proc.status || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Nº Processo SEI:</span> <span style="color:var(--text-primary); font-weight:600; font-family:monospace">${escapeHTML(p.numero_sei || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Equipe Responsável:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(p.equipe_responsavel || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Data Recebimento:</span> <span style="color:var(--text-primary)">${dataReceb}</span></div>
+          <div><span style="color:var(--text-secondary)">UF:</span> <span style="color:var(--text-primary)">${escapeHTML(p.uf || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Município:</span> <span style="color:var(--text-primary)">${escapeHTML(p.municipio || '-')}</span></div>
         </div>
       </div>
 
       <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-secondary); font-size:0.9rem; margin-bottom:1rem; text-transform:uppercase; border-bottom:1px solid var(--border); padding-bottom:0.5rem">
-          Interessado e Demanda
-        </h4>
+        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Processo</h4>
         <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Interessado:</span> <strong style="color:var(--text-primary)">${escapeHTML(proc.interessado || '-')}</strong></div>
-          <div><span style="color:var(--text-secondary)">Última Movimentação:</span> <span>${escapeHTML(proc.data_ultima_movimentacao || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Descrição da Demanda:</span>
-            <div style="margin-top:0.5rem; padding:0.75rem; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); color:var(--text-primary); line-height:1.4">
-              ${escapeHTML(proc.descricao_demanda || 'Nenhuma descrição fornecida.')}
-            </div>
-          </div>
+          <div><span style="color:var(--text-secondary)">Interessado:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(p.interessado || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Vínculo Médico:</span> <span style="color:var(--text-primary)">${escapeHTML(p.vinculo_medico || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Última Movimentação:</span> <span style="color:var(--text-primary)">${dataMov}</span></div>
+          <div><span style="color:var(--text-secondary)">Status:</span> <span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span></div>
         </div>
       </div>
+    </div>
+
+    <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
+      <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Descrição da Demanda</h4>
+      <p style="font-size:0.9rem; color:var(--text-primary); line-height:1.6; white-space:pre-wrap">${escapeHTML(p.descricao_demanda || 'Sem descrição registrada.')}</p>
     </div>
   `;
 
   modal.classList.add('active');
 };
 
-// Popula filtro de equipes
-function populateEquipesFilter(data) {
-  const select = document.getElementById('filterEquipeProcessos');
-  if (!select || select.options.length > 1) return;
 
-  const equipes = [...new Set(data.map(d => d.equipe_responsavel).filter(Boolean))].sort();
-  equipes.forEach(eq => {
-    const opt = document.createElement('option');
-    opt.value = eq;
-    opt.textContent = eq;
-    select.appendChild(opt);
+function populateEquipesFilter(data) {
+  const select = document.getElementById('filterProcEquipe');
+  if (!select || !data) return;
+
+  const currentVal = select.value;
+  const equipes = new Set();
+
+  data.forEach(p => {
+    if (p.equipe_responsavel) {
+      const eq = p.equipe_responsavel.trim().toUpperCase();
+      if (eq) equipes.add(eq);
+    }
   });
+
+  const sortedEquipes = Array.from(equipes).sort();
+  select.innerHTML = '<option value="" style="background: #1e293b; color: #fff;">Todas as Equipes</option>' +
+    sortedEquipes.map(eq => `<option value="${escapeHTML(eq)}" style="background: #1e293b; color: #fff;">${escapeHTML(eq)}</option>`).join('');
+  
+  if (currentVal && equipes.has(currentVal)) {
+    select.value = currentVal;
+  }
 }
 
-// Configura eventos dos filtros de processos
+
 function setupProcessosLogic() {
-  const searchInput = document.getElementById('searchProcessos');
-  const filterStatus = document.getElementById('filterStatusProcessos');
-  const filterEquipe = document.getElementById('filterEquipeProcessos');
-  const btnLimpar = document.getElementById('btnLimparFiltrosProcessos');
-  const btnRefresh = document.getElementById('btnRefreshProcessos');
-  const btnExport = document.getElementById('btnExportProcessosExcel');
+  // Configurar ouvintes em TODOS os elementos de filtro
+  const filterElementIds = [
+    'searchProcesso',
+    'filterProcVinculo',
+    'filterProcEquipe',
+    'filterProcMunicipio',
+    'filterProcStatus'
+  ];
 
-  if (searchInput) searchInput.addEventListener('input', filterProcessos);
-  if (filterStatus) filterStatus.addEventListener('change', filterProcessos);
-  if (filterEquipe) filterEquipe.addEventListener('change', filterProcessos);
+  filterElementIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', filterProcessos);
+      el.addEventListener('change', filterProcessos);
+    }
+  });
 
+  // Botão Limpar Filtros
+  const btnLimpar = document.getElementById('btnLimparFiltrosProc');
   if (btnLimpar) {
     btnLimpar.addEventListener('click', () => {
-      if (searchInput) searchInput.value = '';
-      if (filterStatus) filterStatus.value = '';
-      if (filterEquipe) filterEquipe.value = '';
-      renderProcessosTable(window.processosData);
+      filterElementIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      filterProcessos();
     });
   }
 
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => loadProcessos());
+  // Modal Detalhes — close
+  const btnCloseProcesso = document.getElementById('btnCloseProcessoModal');
+  const modalProcesso = document.getElementById('modalProcesso');
+  if (btnCloseProcesso && modalProcesso) {
+    btnCloseProcesso.addEventListener('click', () => modalProcesso.classList.remove('active'));
+    modalProcesso.addEventListener('click', (e) => {
+      if (e.target === modalProcesso) modalProcesso.classList.remove('active');
+    });
   }
 
+  // Modal Novo Processo — open/close
+  const modalNovo = document.getElementById('modalNovoProcesso');
+  const btnNovoProcesso = document.getElementById('btnNovoProcesso');
+  const btnCloseNovo = document.getElementById('btnCloseNovoProcessoModal');
+  const btnCancelProcesso = document.getElementById('btnCancelProcesso');
+
+  const closeNovo = () => { if (modalNovo) modalNovo.classList.remove('active'); };
+
+  if (btnNovoProcesso) btnNovoProcesso.addEventListener('click', () => { if (modalNovo) modalNovo.classList.add('active'); });
+  if (btnCloseNovo) btnCloseNovo.addEventListener('click', closeNovo);
+  if (btnCancelProcesso) btnCancelProcesso.addEventListener('click', closeNovo);
+
+  // Form submit
+  const form = document.getElementById('processoForm');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btnSubmit = document.getElementById('btnSubmitProcesso');
+      const origHtml = btnSubmit.innerHTML;
+      btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+      btnSubmit.disabled = true;
+
+      const payload = {
+        numero_sei: document.getElementById('procSei').value,
+        equipe_responsavel: document.getElementById('procEquipe').value,
+        data_recebimento: document.getElementById('procDataReceb').value || null,
+        uf: document.getElementById('procUf').value || 'CE',
+        municipio: document.getElementById('procMunicipio').value,
+        descricao_demanda: document.getElementById('procDescricao').value,
+        interessado: document.getElementById('procInteressado').value,
+        vinculo_medico: document.getElementById('procVinculo').value,
+        data_ultima_movimentacao: document.getElementById('procDataMov').value || null,
+        status_processo: document.getElementById('procStatus').value
+      };
+
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) payload.autor_id = session.user.id;
+
+        const { error } = await supabaseClient.from('processos_administrativos').insert([payload]);
+        if (error) throw error;
+
+        form.reset();
+        document.getElementById('procUf').value = 'CE';
+        closeNovo();
+        showAlert('Processo cadastrado com sucesso!', 'success');
+        loadProcessos();
+      } catch (err) {
+        console.error(err);
+        showAlert('Erro ao salvar processo: ' + err.message, 'error');
+      } finally {
+        btnSubmit.innerHTML = origHtml;
+        btnSubmit.disabled = false;
+      }
+    });
+  }
+
+  // Export Excel
+  const btnExport = document.getElementById('btnExportProcessos');
   if (btnExport) {
-    btnExport.addEventListener('click', () => exportProcessosExcel());
+    btnExport.addEventListener('click', () => {
+      if (!window.processosData || window.processosData.length === 0) {
+        showAlert('Nenhum processo para exportar.', 'error');
+        return;
+      }
+      exportProcessosExcel(window.processosData);
+    });
   }
 }
 
-// Filtra processos em memória
+
 function filterProcessos() {
-  const query = normStr(document.getElementById('searchProcessos')?.value || '');
-  const status = document.getElementById('filterStatusProcessos')?.value || '';
-  const equipe = document.getElementById('filterEquipeProcessos')?.value || '';
+  if (!window.processosData) return;
 
-  const filtered = (window.processosData || []).filter(p => {
-    const matchQuery = !query || 
-      normStr(p.numero_sei).includes(query) || 
-      normStr(p.interessado).includes(query) || 
-      normStr(p.municipio).includes(query) || 
-      normStr(p.descricao_demanda).includes(query);
+  const q = normStr(document.getElementById('searchProcesso')?.value);
+  const vinculo = (document.getElementById('filterProcVinculo')?.value || '').trim().toUpperCase();
+  const equipe = (document.getElementById('filterProcEquipe')?.value || '').trim().toUpperCase();
+  const municipio = normStr(document.getElementById('filterProcMunicipio')?.value);
+  const status = normStr(document.getElementById('filterProcStatus')?.value);
 
-    const matchStatus = !status || p.status === status;
-    const matchEquipe = !equipe || p.equipe_responsavel === equipe;
+  const filtered = window.processosData.filter(p => {
+    // 1. Busca textual geral
+    if (q) {
+      const matchText = normStr(p.interessado).includes(q) ||
+                        normStr(p.numero_sei).includes(q) ||
+                        normStr(p.descricao_demanda).includes(q) ||
+                        normStr(p.municipio).includes(q);
+      if (!matchText) return false;
+    }
 
-    return matchQuery && matchStatus && matchEquipe;
+    // 2. Vínculo Médico
+    if (vinculo) {
+      const pVinculo = (p.vinculo_medico || '').toUpperCase().trim();
+      if (vinculo === 'NENHUM') {
+        if (pVinculo !== '' && pVinculo !== 'NULL') return false;
+      } else {
+        if (!pVinculo.includes(vinculo)) return false;
+      }
+    }
+
+    // 3. Equipe Responsável
+    if (equipe) {
+      const pEquipe = (p.equipe_responsavel || '').toUpperCase().trim();
+      if (pEquipe !== equipe) return false;
+    }
+
+    // 4. Município
+    if (municipio) {
+      if (!normStr(p.municipio).includes(municipio)) return false;
+    }
+
+    // 5. Status do Processo
+    if (status) {
+      const pStatus = normStr(p.status_processo);
+      if (!pStatus.includes(status)) return false;
+    }
+
+    return true;
   });
 
   renderProcessosTable(filtered);
 }
 
-// Exporta processos para arquivo CSV
-function exportProcessosExcel() {
-  const fields = [
-    { key: 'numero_sei', label: 'Nº Processo SEI' },
-    { key: 'interessado', label: 'Interessado' },
-    { key: 'municipio', label: 'Município' },
-    { key: 'uf', label: 'UF' },
-    { key: 'equipe_responsavel', label: 'Equipe Responsável' },
-    { key: 'status', label: 'Status' },
-    { key: 'data_recebimento', label: 'Data Recebimento' },
-    { key: 'data_ultima_movimentacao', label: 'Última Movimentação' },
-    { key: 'vinculo_medico', label: 'Vínculo Médico' },
-    { key: 'descricao_demanda', label: 'Descrição da Demanda' }
-  ];
 
-  const csv = convertToCSV(window.processosData, fields);
-  downloadCSV(csv, `processos_administrativos_${new Date().toISOString().slice(0, 10)}.csv`);
-}
+function exportProcessosExcel(data) {
+  // CSV export (opens as Excel)
+  const headers = ['Nº', 'Nº PROCESSO SEI', 'EQUIPE RESPONSÁVEL', 'DATA DE RECEBIMENTO DE PROCESSO', 'UF', 'MUNICÍPIO', 'DESCRIÇÃO DA DEMANDA', 'INTERESSADO', 'VÍNCULO DO(A) MÉDICO(A) COM O PROGRAMA', 'DATA DA ÚLTIMA MOVIMENTAÇÃO', 'STATUS DO PROCESSO'];
+
+  let csv = '\uFEFF'; // BOM for UTF-8
+  csv += headers.join(';') + '\n';
+
+  data.forEach((p, i) => {
+    const dataReceb = p.data_recebimento ? new Date(p.data_recebimento + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+    const dataMov = p.data_ultima_movimentacao ? new Date(p.data_ultima_movimentacao + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+
+    const row = [
+      i + 1,
+      (p.numero_sei || '-').replace(/;/g, ','),
+      (p.equipe_responsavel || '-').replace(/;/g, ','),
+      dataReceb,
+      p.uf || '-',
+      (p.municipio || '-').replace(/;/g, ','),
+      (p.descricao_demanda || '-').replace(/;/g, ',').replace(/\n/g, ' '),
+      (p.interessado || '-').replace(/;/g, ','),
+      (p.vinculo_medico || '-').replace(/;/g, ','),
+      dataMov,
+      p.status_processo || '-'
+    ];
+    csv += row.join(';') + '\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'processos_administrativos_' + new Date().toISOString().slice(0,10) + '.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);

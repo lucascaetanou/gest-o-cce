@@ -4,102 +4,135 @@
 
 window.materiaisData = [];
 
-// Carrega lista de materiais
 async function loadMateriais() {
-  const container = document.getElementById('materiaisGrid');
-  if (!container) return;
-
+  const grid = document.getElementById('materiaisGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">Carregando materiais...</div>';
+  
   try {
-    container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top: 1rem;">Carregando documentos...</p></div>';
-
-    const { data: materiais, error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from('materiais')
       .select('*')
       .order('created_at', { ascending: false });
-
+      
     if (error) throw error;
-
-    window.materiaisData = materiais || [];
-    renderMateriais(window.materiaisData);
-
-  } catch (error) {
-    console.error('Erro ao carregar materiais:', error);
-    container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--accent-danger); padding: 3rem;">Erro ao carregar os documentos.</div>';
+    
+    window.materiaisData = data || [];
+    renderMateriais();
+  } catch (err) {
+    console.error('Erro ao buscar materiais:', err);
+    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--accent-danger); padding: 3rem;">Erro ao carregar materiais: ${err.message}</div>`;
   }
 }
 
-// Renderiza cards de materiais
-function renderMateriais(materiais) {
-  const container = document.getElementById('materiaisGrid');
-  if (!container) return;
 
-  if (!materiais || materiais.length === 0) {
-    container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum documento cadastrado.</div>';
+function renderMateriais() {
+  const grid = document.getElementById('materiaisGrid');
+  if (!grid || !window.materiaisData) return;
+  
+  const activeTabBtn = document.querySelector('#sectionMateriais .tab-btn.active');
+  const activeTab = activeTabBtn ? activeTabBtn.dataset.tab.toUpperCase() : 'TUTORIAIS';
+  const categoria = activeTab === 'TUTORIAIS' ? 'TUTORIAL' : (activeTab === 'DOCUMENTOS' ? 'DOCUMENTO' : 'INFORMATIVO');
+  
+  const filtered = window.materiaisData.filter(m => m.categoria === categoria);
+  
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum material encontrado nesta categoria.</div>';
     return;
   }
-
-  container.innerHTML = '';
-
-  materiais.forEach(mat => {
-    const card = document.createElement('div');
-    card.className = 'stat-card stat-card--primary';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.justifyContent = 'space-between';
-
-    let iconClass = 'fa-file-alt';
-    const cat = (mat.categoria || '').toUpperCase();
-    if (cat.includes('PORTARIA') || cat.includes('LEGISLAÇÃO')) iconClass = 'fa-balance-scale';
-    else if (cat.includes('MANUAL') || cat.includes('GUIA')) iconClass = 'fa-book';
-    else if (cat.includes('FORMULÁRIO') || cat.includes('MODELO')) iconClass = 'fa-file-signature';
-
-    card.innerHTML = `
-      <div>
-        <div style="display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
-          <div class="stat-icon" style="background: rgba(124, 58, 237, 0.1); color: var(--accent-primary); width: 36px; height: 36px; border-radius: var(--radius-sm); font-size: 1rem;">
-            <i class="fas ${iconClass}"></i>
+  
+  grid.innerHTML = '';
+  filtered.forEach(m => {
+    const isVideo = m.link_url && (m.link_url.includes('youtube') || m.link_url.includes('drive.google.com/file'));
+    const icon = isVideo ? 'fa-play-circle' : 'fa-file-pdf';
+    const color = isVideo ? '#ef4444' : '#3b82f6';
+    
+    grid.innerHTML += `
+      <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; transition: var(--transition); display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: ${color}; flex-shrink: 0;">
+            <i class="fas ${icon}"></i>
           </div>
-          <div style="flex: 1;">
-            <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary); line-height: 1.3;">
-              ${escapeHTML(mat.titulo || 'Documento')}
-            </div>
-            <span class="badge badge-approved" style="font-size: 0.7rem; margin-top: 0.25rem;">
-              ${escapeHTML(mat.categoria || 'Geral')}
-            </span>
+          <div>
+            <h4 style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.25rem;">${escapeHTML(m.titulo)}</h4>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(m.created_at).toLocaleDateString('pt-BR')}</div>
           </div>
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.4;">
-          ${escapeHTML(mat.descricao || 'Sem descrição informada.')}
-        </p>
-      </div>
-      <div style="display: flex; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
-        <a href="${escapeHTML(mat.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="flex: 1; text-align: center; text-decoration: none;">
-          <i class="fas fa-external-link-alt" style="margin-right: 0.25rem;"></i> Acessar
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; flex-grow: 1;">${escapeHTML(m.descricao || '')}</p>
+        <a href="${/^https?:\/\//i.test(m.link_url || '') ? escapeHTML(m.link_url) : '#'}" target="_blank" class="btn btn-primary" style="width: 100%; text-align: center; justify-content: center; text-decoration: none;">
+          ${isVideo ? '<i class="fas fa-play"></i> Assistir' : '<i class="fas fa-external-link-alt"></i> Acessar Documento'}
         </a>
       </div>
     `;
-    container.appendChild(card);
   });
 }
 
-// Configura busca e filtros de materiais
+
 function setupMateriaisLogic() {
-  const searchInput = document.getElementById('searchMateriais');
-  const btnRefresh = document.getElementById('btnRefreshMateriais');
-
-  if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      const q = normStr(searchInput.value);
-      const filtered = (window.materiaisData || []).filter(m => {
-        return !q || normStr(m.titulo).includes(q) || normStr(m.descricao).includes(q) || normStr(m.categoria).includes(q);
+  const tabBtns = document.querySelectorAll('#sectionMateriais .tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.borderBottom = 'none';
+        b.style.color = 'var(--text-secondary)';
       });
-      renderMateriais(filtered);
+      btn.classList.add('active');
+      btn.style.borderBottom = '2px solid var(--accent-primary)';
+      btn.style.color = 'var(--text-primary)';
+      renderMateriais();
     });
-  }
-
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => {
-      loadMateriais();
+  });
+  
+  const modal = document.getElementById('modalMaterial');
+  const btnOpen = document.getElementById('btnNovoMaterial');
+  const btnClose = document.getElementById('btnCloseMaterialModal');
+  const btnCancel = document.getElementById('btnCancelMaterial');
+  
+  const closeModal = () => { if(modal) modal.classList.remove('active'); };
+  
+  if (btnOpen) btnOpen.addEventListener('click', () => { if(modal) modal.classList.add('active'); });
+  if (btnClose) btnClose.addEventListener('click', closeModal);
+  if (btnCancel) btnCancel.addEventListener('click', closeModal);
+  
+  const form = document.getElementById('materialForm');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btnSubmit = document.getElementById('btnSubmitMaterial');
+      const origHtml = btnSubmit.innerHTML;
+      btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+      btnSubmit.disabled = true;
+      
+      const payload = {
+        categoria: document.getElementById('matCategoria').value,
+        titulo: document.getElementById('matTitulo').value,
+        descricao: document.getElementById('matDescricao').value,
+        link_url: document.getElementById('matLink').value
+      };
+      
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          payload.autor_id = session.user.id;
+        }
+        
+        const { error } = await supabaseClient.from('materiais').insert([payload]);
+        if (error) throw error;
+        
+        form.reset();
+        closeModal();
+        showAlert('Material cadastrado com sucesso!', 'success');
+        loadMateriais();
+      } catch (err) {
+        console.error(err);
+        showAlert('Erro ao salvar material: ' + err.message, 'error');
+      } finally {
+        btnSubmit.innerHTML = origHtml;
+        btnSubmit.disabled = false;
+      }
     });
   }
 }
+

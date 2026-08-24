@@ -4,223 +4,198 @@
 
 window.dashboardReferencias = [];
 
-// Carrega as estatísticas consolidadas do Dashboard
 async function loadDashboardStats() {
   if (!supabaseClient) return;
 
   try {
-    const { data: totalRecords, count, error: errCount } = await supabaseClient
-      .from('medicos_municipios')
-      .select('*', { count: 'exact', head: true });
+    // Load all doctors for stats calculation
+    const allDoctors = await fetchAllDoctors('perfil_profissional,ativo_inativo,status,regiao_saude,municipio_atuacao,modalidade');
 
-    const totalVagas = (!errCount && count !== null) ? count : 1838;
+    // Calculate metrics from doctors table directly
+    const ativas = allDoctors.filter(d => d.ativo_inativo === 'ATIVA');
+    const ocupadas = ativas.filter(d => d.status === 'OCUPADA');
+    const desocupadas = ativas.filter(d => d.status === 'DESOCUPADA');
+    const emProcesso = ativas.filter(d => d.status === 'EM PROCESSO DE OCUPACAO');
+    const federal = ativas.filter(d => d.modalidade && !d.modalidade.toUpperCase().includes('COPARTICIPACAO'));
+    const copart = ativas.filter(d => d.modalidade && d.modalidade.toUpperCase().includes('COPARTICIPACAO'));
+    const municipios = new Set(allDoctors.map(d => d.municipio_atuacao).filter(Boolean));
 
-    const { data: medicos, error } = await supabaseClient
-      .from('medicos_municipios')
-      .select('situacao_profissional, tipo_profissional, municipio, regiao_saude');
+    const txOcupacao = ativas.length > 0 ? ((ocupadas.length / ativas.length) * 100).toFixed(0) : 0;
 
-    if (error) throw error;
+    // Update DOM Top Stats
+    const elMed = document.getElementById('statMedicosAtivos'); if(elMed) elMed.textContent = ocupadas.length;
+    const elVag = document.getElementById('statTotalVagas'); if(elVag) elVag.textContent = ativas.length;
+    const elVagDet = document.getElementById('statVagasDet'); if(elVagDet) elVagDet.textContent = `${federal.length} fed. + ${copart.length} copart.`;
+    const elTx = document.getElementById('statTaxaOcupacao'); if(elTx) elTx.textContent = `${txOcupacao}%`;
+    const elTxDet = document.getElementById('statTaxaDet'); if(elTxDet) elTxDet.textContent = `${ocupadas.length} de ${ativas.length}`;
+    const elDesoc = document.getElementById('statVagasDesocupadas'); if(elDesoc) elDesoc.textContent = desocupadas.length;
+    const elExtra = document.getElementById('statProfissionalExtra'); if(elExtra) elExtra.textContent = emProcesso.length;
+    const elSec = document.getElementById('statSecretarios'); if(elSec) elSec.textContent = municipios.size;
+    const elSecDet = document.getElementById('statSecretariosDet'); if(elSecDet) elSecDet.textContent = `${municipios.size} municípios`;
 
-    const total = medicos.length;
-    let ativos = 0;
-    let desocupadas = 0;
-    let profExtra = 0;
+    const d = new Date();
+    const subTitle = document.getElementById('dashSubtitle');
+    if (subTitle) subTitle.textContent = `Lista atualizada em ${d.toLocaleDateString('pt-BR')} • ${municipios.size} municípios com profissionais ativos`;
 
-    const medicosPorRegiao = {};
-    const tipoProfissionalCounts = {};
-    const vagasAbertasPorMunicipio = {};
-    const totalVagasPorMunicipio = {};
+    // 2. Alertas de Desocupação (from referencias table)
+    const { data: referencias } = await supabaseClient.from('referencias_regionalizadas').select('*');
+    updateAlertas(referencias);
 
-    medicos.forEach(m => {
-      const sit = (m.situacao_profissional || '').toUpperCase();
-      const mun = m.municipio || 'NÃO INFORMADO';
-      const reg = m.regiao_saude || 'OUTRAS';
-      const tipo = m.tipo_profissional || 'NÃO INFORMADO';
+    // 3. Chart: Medicos por Região (from all doctors)
+    updateMedicosRegiaoChart(null, allDoctors);
 
-      totalVagasPorMunicipio[mun] = (totalVagasPorMunicipio[mun] || 0) + 1;
-
-      if (sit.includes('ATIVO')) {
-        ativos++;
-        medicosPorRegiao[reg] = (medicosPorRegiao[reg] || 0) + 1;
-        tipoProfissionalCounts[tipo] = (tipoProfissionalCounts[tipo] || 0) + 1;
-      } else if (sit.includes('DESOCUPADA') || sit.includes('VAGA')) {
-        desocupadas++;
-        vagasAbertasPorMunicipio[mun] = (vagasAbertasPorMunicipio[mun] || 0) + 1;
-      } else if (sit.includes('EXTRA')) {
-        profExtra++;
-      } else {
-        if (sit) {
-          ativos++;
-          medicosPorRegiao[reg] = (medicosPorRegiao[reg] || 0) + 1;
-          tipoProfissionalCounts[tipo] = (tipoProfissionalCounts[tipo] || 0) + 1;
-        } else {
-          desocupadas++;
-          vagasAbertasPorMunicipio[mun] = (vagasAbertasPorMunicipio[mun] || 0) + 1;
-        }
-      }
-    });
-
-    const taxaOcupacao = totalVagas > 0 ? Math.round((ativos / totalVagas) * 100) : 0;
-
-    animateCounter('statMedicosAtivos', ativos);
-    animateCounter('statVagasDesocupadas', desocupadas);
-    animateCounter('statProfExtra', profExtra);
-
-    const elTotal = document.getElementById('statTotalVagas');
-    if (elTotal) elTotal.textContent = totalVagas;
-
-    const elTaxa = document.getElementById('statTaxaOcupacao');
-    if (elTaxa) elTaxa.textContent = `${taxaOcupacao}%`;
-
-    const elSub = document.getElementById('subTaxaOcupacao');
-    if (elSub) elSub.textContent = `${ativos} de ${totalVagas}`;
-
-    updateAlertas(vagasAbertasPorMunicipio, totalVagasPorMunicipio);
-    updateMedicosRegiaoChart(medicosPorRegiao);
-    updateTipoProfissionalChart(tipoProfissionalCounts);
+    // 4. Chart: Tipo Profissional
+    updateTipoProfissionalChart(allDoctors);
 
   } catch (error) {
-    console.error('Erro ao carregar estatísticas do dashboard:', error);
+    console.error('Error loading dashboard stats:', error);
   }
 }
 
-// Atualiza alertas de desocupação
-function updateAlertas(vagasAbertas, totalVagas) {
-  const container = document.getElementById('alertasDesocupacao');
-  if (!container) return;
 
-  const totalMunicipiosComVagas = Object.keys(vagasAbertas).length;
-  const countEl = document.getElementById('alertaMunicipiosCount');
-  if (countEl) countEl.textContent = `${totalMunicipiosComVagas} municípios com vagas abertas`;
-
-  if (window.dashboardReferencias && window.dashboardReferencias.length > 0) {
-    renderAlertasList(vagasAbertas, 'desc');
-  } else {
-    supabaseClient
-      .from('referencias_regionais')
-      .select('municipio, regiao_saude')
-      .then(({ data }) => {
-        window.dashboardReferencias = data || [];
-        renderAlertasList(vagasAbertas, 'desc');
-      });
+function updateAlertas(referencias) {
+  if (referencias) {
+    window.dashboardReferencias = referencias;
   }
+  renderAlertasList();
 }
 
-// Renderiza lista de alertas de desocupação
-function renderAlertasList(vagasAbertas, order = 'desc') {
-  const listEl = document.getElementById('listaAlertasDesocupacao');
-  if (!listEl) return;
 
-  const regiaoMap = {};
-  if (window.dashboardReferencias) {
-    window.dashboardReferencias.forEach(r => {
-      if (r.municipio) regiaoMap[r.municipio.toUpperCase().trim()] = r.regiao_saude;
-    });
+function renderAlertasList() {
+  const container = document.getElementById('alertasList');
+  const countEl = document.getElementById('alertasCount');
+  const sortSelect = document.getElementById('alertasSort');
+  const referencias = window.dashboardReferencias;
+  
+  if (!container || !referencias) return;
+  
+  // Set up event listener if not already done
+  if (sortSelect && !sortSelect.dataset.listener) {
+    sortSelect.addEventListener('change', renderAlertasList);
+    sortSelect.dataset.listener = 'true';
   }
 
-  let entries = Object.entries(vagasAbertas);
-  if (order === 'desc') {
-    entries.sort((a, b) => b[1] - a[1]);
-  } else {
-    entries.sort((a, b) => a[1] - b[1]);
+  let alertas = referencias.filter(r => r.vagas_desocupadas > 0);
+  
+  const sortMethod = sortSelect ? sortSelect.value : 'desc';
+  
+  alertas.sort((a, b) => {
+    if (sortMethod === 'asc') {
+      return (a.vagas_desocupadas || 0) - (b.vagas_desocupadas || 0);
+    } else if (sortMethod === 'alpha') {
+      return (a.municipio_dsei || '').localeCompare(b.municipio_dsei || '');
+    } else { // desc
+      return (b.vagas_desocupadas || 0) - (a.vagas_desocupadas || 0);
+    }
+  });
+  
+  if(countEl) countEl.textContent = `${alertas.length} municípios com vagas abertas`;
+  container.innerHTML = '';
+
+  if (alertas.length === 0) {
+    container.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted);">Nenhum alerta de desocupação.</div>';
+    return;
   }
 
-  listEl.innerHTML = '';
-  entries.forEach(([mun, count]) => {
-    const reg = regiaoMap[mun.toUpperCase().trim()] || 'Região não identificada';
-    const item = document.createElement('div');
-    item.className = 'alerta-item';
-    item.innerHTML = `
-      <div class="alerta-mun-info">
-        <div class="alerta-mun-nome">${escapeHTML(mun)}</div>
-        <div class="alerta-mun-regiao">${escapeHTML(reg)}</div>
-      </div>
-      <div class="alerta-mun-stats">
-        <span class="alerta-mun-vagas">${count} desocupadas</span>
+  alertas.forEach(a => {
+    const total = a.total_vagas || 0;
+    const desc = a.vagas_desocupadas || 0;
+    const prog = total > 0 ? ((desc / total) * 100).toFixed(0) : 0;
+    
+    let badgeClass = 'badge-danger';
+    if (prog < 30) badgeClass = 'badge-warning';
+    
+    const html = `
+      <div class="alerta-item" style="display:flex; justify-content:space-between; align-items:center; padding:1rem; border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600; color:var(--text-primary)">${escapeHTML(a.municipio_dsei || '-')}</div>
+          <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(a.macro_regiao || '-')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1.1rem; font-weight:700; color:var(--accent-danger)">${desc} <span style="font-size:0.8rem; font-weight:400; color:var(--text-muted)">desocupadas</span></div>
+          <div style="font-size:0.8rem; color:var(--text-muted)">de ${total} vagas totais</div>
+        </div>
       </div>
     `;
-    listEl.appendChild(item);
+    container.innerHTML += html;
   });
 }
 
-// Gráfico de Médicos por Região
-let medicosRegiaoChart = null;
-function updateMedicosRegiaoChart(countsByRegiao) {
+
+function updateMedicosRegiaoChart(referencias, allDoctors) {
   const ctx = document.getElementById('chartMedicosRegiao');
   if (!ctx) return;
 
-  const labels = Object.keys(countsByRegiao);
-  const data = Object.values(countsByRegiao);
+  // Group by regiao_saude from doctors
+  const dataMap = {};
+  const source = allDoctors || [];
+  source.filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
+    const regiao = d.regiao_saude || 'Não Informado';
+    dataMap[regiao] = (dataMap[regiao] || 0) + 1;
+  });
 
-  if (medicosRegiaoChart) {
-    medicosRegiaoChart.data.labels = labels;
-    medicosRegiaoChart.data.datasets[0].data = data;
-    medicosRegiaoChart.update();
-  } else {
-    medicosRegiaoChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Médicos Ativos',
-          data: data,
-          backgroundColor: 'rgba(124, 58, 237, 0.6)',
-          borderColor: 'rgba(124, 58, 237, 1)',
-          borderWidth: 1,
-          borderRadius: 4
-        }]
+  const labels = Object.keys(dataMap).sort((a,b) => dataMap[b] - dataMap[a]);
+  const data = labels.map(l => dataMap[l]);
+
+  if (chartRegiao) chartRegiao.destroy();
+
+  chartRegiao = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Médicos Ativos',
+        data: data,
+        backgroundColor: '#6366f1',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b8fa3' } },
+        x: { grid: { display: false }, ticks: { color: '#8b8fa3', maxRotation: 45, minRotation: 45 } }
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#8b8fa3', font: { family: 'Inter', size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#8b8fa3' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-        }
-      }
-    });
-  }
+      plugins: { legend: { display: false } }
+    }
+  });
 }
 
-// Gráfico de Tipos Profissionais
-let tipoProfissionalChart = null;
-function updateTipoProfissionalChart(tipoCounts) {
+
+
+function updateTipoProfissionalChart(doctors) {
   const ctx = document.getElementById('chartTipoProfissional');
-  if (!ctx) return;
+  if (!ctx || !doctors) return;
 
-  const labels = Object.keys(tipoCounts);
-  const data = Object.values(tipoCounts);
-  const colors = [
-    '#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6'
-  ];
+  // Group by perfil_profissional
+  const dataMap = {};
+  doctors.forEach(d => {
+    const perfil = d.perfil_profissional || 'Não Informado';
+    dataMap[perfil] = (dataMap[perfil] || 0) + 1;
+  });
 
-  if (tipoProfissionalChart) {
-    tipoProfissionalChart.data.labels = labels;
-    tipoProfissionalChart.data.datasets[0].data = data;
-    tipoProfissionalChart.update();
-  } else {
-    tipoProfissionalChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: data,
-          backgroundColor: colors.slice(0, labels.length),
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: { color: '#8b8fa3', font: { family: 'Inter', size: 11 }, boxWidth: 12 }
-          }
-        },
-        cutout: '70%'
+  const labels = Object.keys(dataMap);
+  const data = labels.map(l => dataMap[l]);
+
+  if (chartTipoProf) chartTipoProf.destroy();
+
+  chartTipoProf = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'],
+        borderWidth: 2,
+        borderColor: '#111638'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'right', labels: { color: '#f0f0ff', padding: 20 } }
       }
-    });
-  }
+    }
+  });
 }

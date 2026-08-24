@@ -4,383 +4,436 @@
 
 window.medicosData = [];
 
-// Busca completa de médicos com paginação automática
-async function fetchAllDoctors(selectCols = '*') {
+async function fetchAllDoctors(selectCols) {
   let allData = [];
   let from = 0;
-  const step = 1000;
-  let hasMore = true;
+  const size = 1000;
+  let fetchMore = true;
+  const cols = selectCols || 'perfil_profissional,ativo_inativo,status,regiao_saude,municipio_atuacao';
 
-  while (hasMore) {
+  while (fetchMore) {
     const { data, error } = await supabaseClient
-      .from('medicos_municipios')
-      .select(selectCols)
-      .range(from, from + step - 1);
-
-    if (error) throw error;
+      .from('doctors')
+      .select(cols)
+      .range(from, from + size - 1);
+    
+    if (error) {
+      console.error(error);
+      break;
+    }
+    
     if (data && data.length > 0) {
       allData = allData.concat(data);
-      if (data.length < step) hasMore = false;
-      else from += step;
+      from += size;
     } else {
-      hasMore = false;
+      fetchMore = false;
     }
   }
   return allData;
 }
 
-// Carrega lista principal de médicos
+
 async function loadMedicos() {
   const tbody = document.getElementById('medicosTableBody');
   if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 3rem;">Carregando médicos...</td></tr>';
 
   try {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:3rem">Carregando médicos (1.800+ registros)...</td></tr>';
+    const { data: medicos, error } = await supabaseClient
+      .from('doctors')
+      .select('id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao')
+      .order('nome_profissional', { ascending: true });
 
-    const data = await fetchAllDoctors('id, medico_ou_vaga, municipio, regiao_saude, perfil, situacao_profissional, tipo_profissional, crm_completo');
-    window.medicosData = data || [];
+    if (error) throw error;
+
+    if (!medicos || medicos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 3rem;">Nenhum médico encontrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
     
-    populateMedicoFilters(window.medicosData);
+    window.medicosData = medicos;
+    populateMedicoFilters(medicos);
     renderMedicosTable(window.medicosData);
-
+    setupMedicoFilters();
   } catch (error) {
-    console.error('Erro ao carregar médicos:', error);
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar os dados dos médicos.</td></tr>';
+    console.error(error);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #ef4444; padding: 3rem;">Erro ao carregar médicos.</td></tr>';
   }
 }
 
-// Renderiza tabela de médicos
+
 function renderMedicosTable(data) {
   const tbody = document.getElementById('medicosTableBody');
   if (!tbody) return;
-
+  
   if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:3rem">Nenhum registro encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 3rem;">Nenhum médico encontrado.</td></tr>';
     return;
   }
-
+  
   tbody.innerHTML = '';
-  const displayLimit = 300;
-  const slice = data.slice(0, displayLimit);
+  
+  data.forEach(m => {
+      const tr = document.createElement('tr');
+      
+      let statusBadge = `<span class="badge badge-pending">${escapeHTML(m.status || 'Vaga')}</span>`;
+      if (m.status === 'OCUPADA') statusBadge = `<span class="badge badge-approved">OCUPADA</span>`;
+      else if (m.status === 'DESOCUPADA') statusBadge = `<span class="badge badge-rejected">DESOCUPADA</span>`;
+      else if (m.status === 'EM PROCESSO DE OCUPACAO') statusBadge = `<span class="badge badge-pending">EM PROCESSO</span>`;
 
-  slice.forEach(medico => {
-    const tr = document.createElement('tr');
-    
-    const isVaga = (medico.medico_ou_vaga || '').toUpperCase().includes('VAGA') || 
-                   (medico.situacao_profissional || '').toUpperCase().includes('DESOCUPADA');
-    
-    let badgeClass = 'badge-approved';
-    let sit = medico.situacao_profissional || 'Ativo';
-    if (isVaga) {
-      badgeClass = 'badge-rejected';
-    } else if (sit.toUpperCase().includes('EXTRA') || sit.toUpperCase().includes('PENDENTE')) {
-      badgeClass = 'badge-pending';
+      const isInativa = m.ativo_inativo === 'INATIVA';
+      const rowStyle = isInativa ? 'opacity: 0.5;' : '';
+
+      tr.style.cssText = rowStyle;
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight: 500; color: var(--text-primary)">${m.nome_profissional ? escapeHTML(m.nome_profissional) : '<em style="color:var(--text-muted)">Vaga sem profissional</em>'}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(m.perfil_profissional || '-')}</div>
+        </td>
+        <td>${statusBadge}${isInativa ? '<div style="font-size:0.7rem;color:var(--accent-danger);margin-top:2px">INATIVA</div>' : ''}</td>
+        <td>
+          <div>${escapeHTML(m.municipio_atuacao || '-')}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(m.regiao_saude || '-')}</div>
+        </td>
+        <td style="font-size:0.8rem; color: var(--text-secondary)">${escapeHTML(m.status_prof_egestor || '-')}</td>
+        <td class="actions">
+          <button class="btn btn-ghost btn-sm" onclick="viewMedicoDetails('${escapeHTML(m.id)}')">Ver</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+}
+
+
+function populateMedicoFilters(data) {
+  const selectEixo = document.getElementById('filterMedicoEixo');
+  const selectGestao = document.getElementById('filterMedicoGestao');
+
+  if (selectEixo && data) {
+    const currentVal = selectEixo.value;
+    const eixos = new Set();
+    data.forEach(m => {
+      if (m.eixo_vaga) {
+        const val = m.eixo_vaga.trim();
+        if (val) eixos.add(val);
+      }
+    });
+    const sorted = Array.from(eixos).sort();
+    selectEixo.innerHTML = '<option value="" style="background: #1e293b; color: #fff;">Todos os Eixos</option>' +
+      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #1e293b; color: #fff;">${escapeHTML(v)}</option>`).join('');
+    if (currentVal && eixos.has(currentVal)) selectEixo.value = currentVal;
+  }
+
+  if (selectGestao && data) {
+    const currentVal = selectGestao.value;
+    const gestoes = new Set();
+    data.forEach(m => {
+      if (m.gestao) {
+        const val = m.gestao.trim();
+        if (val) gestoes.add(val);
+      }
+    });
+    const sorted = Array.from(gestoes).sort();
+    selectGestao.innerHTML = '<option value="" style="background: #1e293b; color: #fff;">Todas as Gestões</option>' +
+      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #1e293b; color: #fff;">${escapeHTML(v)}</option>`).join('');
+    if (currentVal && gestoes.has(currentVal)) selectGestao.value = currentVal;
+  }
+}
+
+
+function setupMedicoFilters() {
+  const elementIds = ['searchMedicoName', 'searchMedicoCity', 'filterMedicoEixo', 'filterMedicoGestao'];
+  
+  elementIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', filterMedicos);
+      el.addEventListener('change', filterMedicos);
     }
-
-    tr.innerHTML = `
-      <td>
-        <div style="font-weight: 600; color: ${isVaga ? 'var(--text-muted)' : 'var(--text-primary)'}">
-          ${escapeHTML(medico.medico_ou_vaga || 'Vaga Sem Profissional')}
-        </div>
-        <div style="font-size: 0.8rem; color: var(--text-muted)">
-          ${medico.crm_completo ? 'CRM: ' + escapeHTML(medico.crm_completo) : (isVaga ? 'Desocupada' : 'Sem CRM')}
-        </div>
-      </td>
-      <td>
-        <div style="font-weight: 500">${escapeHTML(medico.municipio || '-')}</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(medico.regiao_saude || '-')}</div>
-      </td>
-      <td><span class="badge ${badgeClass}">${escapeHTML(sit)}</span></td>
-      <td><span style="font-size: 0.85rem">${escapeHTML(medico.perfil || '-')}</span></td>
-      <td><span style="font-size: 0.85rem; color: var(--accent-secondary)">${escapeHTML(medico.tipo_profissional || '-')}</span></td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="viewMedicoDetails('${escapeHTML(medico.id)}')" title="Ver Ficha Completa">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
   });
 
-  if (data.length > displayLimit) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td colspan="6" style="text-align:center; color:var(--text-secondary); padding:1rem; font-size:0.85rem; background:rgba(255,255,255,0.01)">
-        Exibindo os primeiros ${displayLimit} de ${data.length} registros. Utilize a busca e os filtros acima para refinar.
-      </td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
-
-// Popula dropdowns de filtros de médicos
-function populateMedicoFilters(data) {
-  if (!data) return;
-  const selectRegiao = document.getElementById('filterRegiaoMedicos');
-  const selectPerfil = document.getElementById('filterPerfilMedicos');
-  const selectSituacao = document.getElementById('filterSituacaoMedicos');
-  const selectTipo = document.getElementById('filterTipoMedicos');
-
-  if (selectRegiao && selectRegiao.options.length <= 1) {
-    const regioes = [...new Set(data.map(d => d.regiao_saude).filter(Boolean))].sort();
-    regioes.forEach(r => {
-      const opt = document.createElement('option');
-      opt.value = r;
-      opt.textContent = r;
-      selectRegiao.appendChild(opt);
-    });
-  }
-
-  if (selectPerfil && selectPerfil.options.length <= 1) {
-    const perfis = [...new Set(data.map(d => d.perfil).filter(Boolean))].sort();
-    perfis.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p;
-      opt.textContent = p;
-      selectPerfil.appendChild(opt);
-    });
-  }
-
-  if (selectSituacao && selectSituacao.options.length <= 1) {
-    const situacoes = [...new Set(data.map(d => d.situacao_profissional).filter(Boolean))].sort();
-    situacoes.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s;
-      opt.textContent = s;
-      selectSituacao.appendChild(opt);
-    });
-  }
-
-  if (selectTipo && selectTipo.options.length <= 1) {
-    const tipos = [...new Set(data.map(d => d.tipo_profissional).filter(Boolean))].sort();
-    tipos.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t;
-      opt.textContent = t;
-      selectTipo.appendChild(opt);
-    });
-  }
-}
-
-// Configura eventos dos filtros de médicos
-function setupMedicoFilters() {
-  const searchInput = document.getElementById('searchMedicos');
-  const filterRegiao = document.getElementById('filterRegiaoMedicos');
-  const filterPerfil = document.getElementById('filterPerfilMedicos');
-  const filterSituacao = document.getElementById('filterSituacaoMedicos');
-  const filterTipo = document.getElementById('filterTipoMedicos');
   const btnLimpar = document.getElementById('btnLimparFiltrosMedicos');
-  const btnRefresh = document.getElementById('btnRefreshMedicos');
-
-  if (searchInput) searchInput.addEventListener('input', filterMedicos);
-  if (filterRegiao) filterRegiao.addEventListener('change', filterMedicos);
-  if (filterPerfil) filterPerfil.addEventListener('change', filterMedicos);
-  if (filterSituacao) filterSituacao.addEventListener('change', filterMedicos);
-  if (filterTipo) filterTipo.addEventListener('change', filterMedicos);
-
   if (btnLimpar) {
     btnLimpar.addEventListener('click', () => {
-      if (searchInput) searchInput.value = '';
-      if (filterRegiao) filterRegiao.value = '';
-      if (filterPerfil) filterPerfil.value = '';
-      if (filterSituacao) filterSituacao.value = '';
-      if (filterTipo) filterTipo.value = '';
-      renderMedicosTable(window.medicosData);
-    });
-  }
-
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => {
-      loadMedicos();
+      elementIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      filterMedicos();
     });
   }
 }
 
-// Filtra registros de médicos em memória
+
 function filterMedicos() {
-  const query = normStr(document.getElementById('searchMedicos')?.value || '');
-  const regiao = document.getElementById('filterRegiaoMedicos')?.value || '';
-  const perfil = document.getElementById('filterPerfilMedicos')?.value || '';
-  const situacao = document.getElementById('filterSituacaoMedicos')?.value || '';
-  const tipo = document.getElementById('filterTipoMedicos')?.value || '';
+  if (!window.medicosData) return;
 
-  const filtered = (window.medicosData || []).filter(m => {
-    const matchQuery = !query || 
-      normStr(m.medico_ou_vaga).includes(query) || 
-      normStr(m.municipio).includes(query) || 
-      normStr(m.crm_completo).includes(query);
-    
-    const matchRegiao = !regiao || m.regiao_saude === regiao;
-    const matchPerfil = !perfil || m.perfil === perfil;
-    const matchSituacao = !situacao || m.situacao_profissional === situacao;
-    const matchTipo = !tipo || m.tipo_profissional === tipo;
+  const nameVal = normStr(document.getElementById('searchMedicoName')?.value);
+  const cityVal = normStr(document.getElementById('searchMedicoCity')?.value);
+  const eixoVal = (document.getElementById('filterMedicoEixo')?.value || '').trim().toUpperCase();
+  const gestaoVal = (document.getElementById('filterMedicoGestao')?.value || '').trim().toUpperCase();
 
-    return matchQuery && matchRegiao && matchPerfil && matchSituacao && matchTipo;
+  const filtered = window.medicosData.filter(m => {
+    // 1. Nome
+    if (nameVal) {
+      const nome = normStr(m.nome_profissional || 'vaga sem profissional');
+      if (!nome.includes(nameVal)) return false;
+    }
+
+    // 2. Município / Região
+    if (cityVal) {
+      const city = normStr(m.municipio_atuacao);
+      const regiao = normStr(m.regiao_saude);
+      if (!city.includes(cityVal) && !regiao.includes(cityVal)) return false;
+    }
+
+    // 3. Eixo da Vaga
+    if (eixoVal) {
+      const mEixo = (m.eixo_vaga || '').trim().toUpperCase();
+      if (mEixo !== eixoVal) return false;
+    }
+
+    // 4. Gestão
+    if (gestaoVal) {
+      const mGestao = (m.gestao || '').trim().toUpperCase();
+      if (mGestao !== gestaoVal) return false;
+    }
+
+    return true;
   });
 
   renderMedicosTable(filtered);
 }
 
-// Abre modal com a ficha completa do médico
-window.viewMedicoDetails = async function(id) {
+
+async function viewMedicoDetails(id) {
   const modal = document.getElementById('modalMedico');
   const modalBody = document.getElementById('modalMedicoBody');
   if (!modal || !modalBody) return;
-
-  modalBody.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:1rem">Carregando dados completos...</p></div>';
+  
+  modalBody.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:1rem">Carregando detalhes...</p></div>';
   modal.classList.add('active');
 
   try {
     const { data: medico, error } = await supabaseClient
-      .from('medicos_municipios')
+      .from('doctors')
       .select('*')
       .eq('id', id)
       .single();
 
     if (error) throw error;
 
-    let processosHTML = '<p style="color:var(--text-muted); font-size:0.85rem">Nenhum processo vinculado.</p>';
-    if (window.processosData && window.processosData.length > 0 && medico.medico_ou_vaga) {
-      const matchProc = window.processosData.filter(p => matchMedicoProcesso(medico.medico_ou_vaga, p));
-      if (matchProc.length > 0) {
-        processosHTML = matchProc.map(p => `
-          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.75rem; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <div style="font-weight:600; color:var(--text-primary); font-size:0.85rem">${escapeHTML(p.numero_sei || '-')}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted)">Status: ${escapeHTML(p.status || '-')} | Equipe: ${escapeHTML(p.equipe_responsavel || '-')}</div>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="goToProcessoDetails('${escapeHTML(p.id)}')" title="Ver Processo" style="font-size:0.75rem">
-              <i class="fas fa-external-link-alt"></i> Ver
-            </button>
-          </div>
-        `).join('');
+    // Garantir que temos processosData carregado
+    if (!window.processosData || window.processosData.length === 0) {
+      try {
+        const { data: pData } = await supabaseClient.from('processos_administrativos').select('*').order('created_at', { ascending: false });
+        window.processosData = pData || [];
+      } catch (e) {
+        console.error('Erro ao buscar processos para vinculo:', e);
       }
     }
 
-    modalBody.innerHTML = `
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-        <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-          <h3 style="color: var(--accent-primary); font-size: 0.95rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
-            <i class="fas fa-user-md" style="margin-right: 0.5rem;"></i> Dados do Profissional
-          </h3>
-          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.85rem;">
-            <div><span style="color: var(--text-muted)">Nome / Vaga:</span> <strong style="color: var(--text-primary)">${escapeHTML(medico.medico_ou_vaga || '-')}</strong></div>
-            <div><span style="color: var(--text-muted)">CPF:</span> <span>${maskCPF(medico.cpf)}</span></div>
-            <div><span style="color: var(--text-muted)">CRM / UF:</span> <span>${escapeHTML(medico.crm_completo || '-')} (${escapeHTML(medico.uf_crm || '-')})</span></div>
-            <div><span style="color: var(--text-muted)">E-mail:</span> <span>${escapeHTML(medico.email || '-')}</span></div>
-            <div><span style="color: var(--text-muted)">Telefone:</span> <span>${escapeHTML(medico.telefone || '-')}</span></div>
-            <div><span style="color: var(--text-muted)">Sexo / Raça:</span> <span>${escapeHTML(medico.sexo || '-')} / ${escapeHTML(medico.raca_cor || '-')}</span></div>
-          </div>
-        </div>
+    // Buscar processos relacionados por nome do médico (insensível a acentos)
+    const docName = (medico.nome_profissional || '').trim();
+    let processosRelacionados = (window.processosData || []).filter(p => matchMedicoProcesso(docName, p));
 
-        <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
-          <h3 style="color: var(--accent-secondary); font-size: 0.95rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
-            <i class="fas fa-hospital" style="margin-right: 0.5rem;"></i> Lotação e Programa
-          </h3>
-          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.85rem;">
-            <div><span style="color: var(--text-muted)">Município:</span> <strong style="color: var(--text-primary)">${escapeHTML(medico.municipio || '-')}</strong></div>
-            <div><span style="color: var(--text-muted)">Região de Saúde:</span> <span>${escapeHTML(medico.regiao_saude || '-')}</span></div>
-            <div><span style="color: var(--text-muted)">CNES Unidade:</span> <span>${escapeHTML(medico.cnes || '-')} - ${escapeHTML(medico.nome_estabelecimento || '-')}</span></div>
-            <div><span style="color: var(--text-muted)">Situação:</span> <span class="badge badge-approved">${escapeHTML(medico.situacao_profissional || '-')}</span></div>
-            <div><span style="color: var(--text-muted)">Perfil / Tipo:</span> <span>${escapeHTML(medico.perfil || '-')} (${escapeHTML(medico.tipo_profissional || '-')})</span></div>
-            <div><span style="color: var(--text-muted)">Data Início:</span> <span>${escapeHTML(medico.data_inicio_atuacao || '-')}</span></div>
+    let processosHtml = '';
+    if (processosRelacionados.length > 0) {
+      processosHtml = processosRelacionados.map(p => {
+        let badgeClass = 'badge-pending';
+        const st = (p.status_processo || '').toUpperCase();
+        if (st.includes('CONCLUÍDO') || st.includes('CONCLUIDO')) badgeClass = 'badge-approved';
+        else if (st.includes('ARQUIVADO') || st.includes('SOBRESTADO')) badgeClass = 'badge-rejected';
+
+        return `
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.85rem; margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem">
+                <span style="font-weight:600; color:var(--text-primary); font-family:monospace; font-size:0.85rem">${escapeHTML(p.numero_sei || '-')}</span>
+                <span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span>
+              </div>
+              <div style="font-size:0.8rem; color:var(--text-secondary)">Equipe: <strong>${escapeHTML(p.equipe_responsavel || '-')}</strong> | Demanda: ${escapeHTML(p.descricao_demanda || '-')}</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="goToProcessoDetails('${escapeHTML(p.id)}')" style="font-size:0.8rem">
+              <i class="fas fa-external-link-alt"></i> Ver Processo
+            </button>
           </div>
-        </div>
+        `;
+      }).join('');
+    } else {
+      processosHtml = '<div style="color:var(--text-muted); font-size:0.85rem; padding:0.5rem 0">Nenhum processo administrativo vinculado a este(a) profissional.</div>';
+    }
+
+    modalBody.innerHTML = `
+      <div class="modal-grid">
+        <div class="detail-group"><div class="detail-label">Nome Completo</div><div class="detail-value">${escapeHTML(medico.nome_profissional || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Nº Inscrição</div><div class="detail-value">${escapeHTML(medico.nu_inscricao || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Perfil Profissional</div><div class="detail-value">${escapeHTML(medico.perfil_profissional || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Status da Vaga</div><div class="detail-value">${escapeHTML(medico.status || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Ativo/Inativo</div><div class="detail-value">${escapeHTML(medico.ativo_inativo || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Status e-Gestor</div><div class="detail-value">${escapeHTML(medico.status_prof_egestor || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Município</div><div class="detail-value">${escapeHTML(medico.municipio_atuacao || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Região de Saúde (CIR)</div><div class="detail-value">${escapeHTML(medico.regiao_saude || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">UF</div><div class="detail-value">${escapeHTML(medico.estado_atuacao || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Categoria IVS</div><div class="detail-value">${escapeHTML(medico.categoria_ivs || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Modalidade</div><div class="detail-value">${escapeHTML(medico.modalidade || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Eixo da Vaga</div><div class="detail-value">${escapeHTML(medico.eixo_vaga || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Origem da Vaga</div><div class="detail-value">${escapeHTML(medico.origem_vaga || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Gestão</div><div class="detail-value">${escapeHTML(medico.gestao || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Eixo Integração</div><div class="detail-value">${escapeHTML(medico.eixo_integracao || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">País de Origem</div><div class="detail-value">${escapeHTML(medico.pais_origem || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Nacionalidade</div><div class="detail-value">${escapeHTML(medico.nacionalidade || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Sexo</div><div class="detail-value">${escapeHTML(medico.sexo || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Raça/Cor</div><div class="detail-value">${escapeHTML(medico.raca_cor || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Início Atividade</div><div class="detail-value">${escapeHTML(medico.inicio_atividade || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Encerramento</div><div class="detail-value">${escapeHTML(medico.encerramento_atividade || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">CPF</div><div class="detail-value">${maskCPF(medico.cpf)}</div></div>
+        <div class="detail-group"><div class="detail-label">Email</div><div class="detail-value">${escapeHTML(medico.email || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Telefone</div><div class="detail-value">${escapeHTML(medico.telefone || '-')}</div></div>
+        <div class="detail-group"><div class="detail-label">Banco</div><div class="detail-value">${escapeHTML(medico.banco || '-')} / Ag: ${maskBankAccount(medico.agencia_bancaria)} / Cc: ${maskBankAccount(medico.conta_bancaria)}</div></div>
       </div>
 
-      <div style="background: var(--bg-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 1rem;">
-        <h3 style="color: var(--accent-warning); font-size: 0.95rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
-          <i class="fas fa-gavel" style="margin-right: 0.5rem;"></i> Processos Administrativos Vinculados
-        </h3>
-        ${processosHTML}
+      <!-- Seção de Processos Administrativos Vinculados -->
+      <div style="margin-top:1.5rem; background:var(--bg-secondary); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--border)">
+        <h4 style="color:var(--accent-info); font-size:0.95rem; font-weight:600; display:flex; align-items:center; justify-content:space-between">
+          <span><i class="fas fa-gavel" style="margin-right:0.5rem"></i> Processos Administrativos Relacionados</span>
+          <span class="badge badge-info" style="font-size:0.8rem">${processosRelacionados.length}</span>
+        </h4>
+        ${processosHtml}
       </div>
     `;
-
-  } catch (error) {
-    console.error('Erro ao buscar detalhes do médico:', error);
-    modalBody.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--accent-danger)">Erro ao carregar os detalhes do profissional.</div>';
+  } catch (err) {
+    console.error(err);
+    modalBody.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--accent-danger)">Erro ao carregar detalhes do médico.</div>';
   }
-};
+}
 
-// Integração de navegação para processos a partir do médico
-window.goToProcessoDetails = function(procId) {
+
+
+window.goToProcessoDetails = function(processoId) {
+  // 1. Fechar modal do médico
   const modalMedico = document.getElementById('modalMedico');
   if (modalMedico) modalMedico.classList.remove('active');
 
+  // 2. Mudar para a aba de Processos
   const navProc = document.getElementById('navProcessos');
   if (navProc) navProc.click();
 
+  // 3. Abrir o modal do processo específico
   setTimeout(() => {
     if (typeof window.viewProcessoDetails === 'function') {
-      window.viewProcessoDetails(procId);
+      window.viewProcessoDetails(processoId);
     }
   }, 250);
 };
 
-// Busca dados customizados para exportação CSV
-async function fetchCustomDoctorsData(selectedFields) {
-  const keys = selectedFields.map(f => f.key);
-  const selectQuery = keys.join(',');
-  return await fetchAllDoctors(selectQuery);
-}
 
-// Configura o modal e a lógica de exportação CSV de médicos
+
 function setupExportLogic() {
-  const btnExport = document.getElementById('btnExportMedicos');
   const modalExport = document.getElementById('modalExport');
+  const btnOpenExportModal = document.getElementById('btnOpenExportModal');
   const btnCloseExportModal = document.getElementById('btnCloseExportModal');
-  const btnConfirmExport = document.getElementById('btnConfirmExport');
-  const chkAll = document.getElementById('chkExportAll');
+  const btnCancelExport = document.getElementById('btnCancelExport');
+  const exportForm = document.getElementById('exportForm');
+  const btnSelectAllCols = document.getElementById('btnSelectAllCols');
+  const btnClearAllCols = document.getElementById('btnClearAllCols');
 
-  if (btnExport && modalExport) {
-    btnExport.addEventListener('click', () => {
-      modalExport.classList.add('active');
+  if (btnOpenExportModal) {
+    btnOpenExportModal.addEventListener('click', () => {
+      if (modalExport) modalExport.classList.add('active');
     });
   }
 
-  if (btnCloseExportModal && modalExport) {
-    btnCloseExportModal.addEventListener('click', () => {
-      modalExport.classList.remove('active');
+  const closeExport = () => { if (modalExport) modalExport.classList.remove('active'); };
+  if (btnCloseExportModal) btnCloseExportModal.addEventListener('click', closeExport);
+  if (btnCancelExport) btnCancelExport.addEventListener('click', closeExport);
+
+  // Close on outside click
+  if (modalExport) {
+    modalExport.addEventListener('click', (e) => {
+      if (e.target === modalExport) closeExport();
     });
   }
 
-  if (chkAll) {
-    chkAll.addEventListener('change', (e) => {
-      const checkboxes = document.querySelectorAll('#modalExport input[type="checkbox"]:not(#chkExportAll)');
-      checkboxes.forEach(cb => cb.checked = e.target.checked);
+  if (btnSelectAllCols) {
+    btnSelectAllCols.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('#exportForm input[name="cols"]').forEach(cb => cb.checked = true);
     });
   }
 
-  if (btnConfirmExport) {
-    btnConfirmExport.addEventListener('click', async () => {
-      const selectedFields = [];
-      const checkboxes = document.querySelectorAll('#modalExport input[type="checkbox"]:not(#chkExportAll):checked');
-      
-      checkboxes.forEach(cb => {
-        selectedFields.push({ key: cb.value, label: cb.dataset.label || cb.value });
-      });
+  if (btnClearAllCols) {
+    btnClearAllCols.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('#exportForm input[name="cols"]').forEach(cb => cb.checked = false);
+    });
+  }
 
-      if (selectedFields.length === 0) {
-        alert('Por favor, selecione ao menos um campo para exportar.');
+  if (exportForm) {
+    exportForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const checkedBoxes = document.querySelectorAll('#exportForm input[name="cols"]:checked');
+      if (checkedBoxes.length === 0) {
+        alert('Selecione pelo menos uma coluna para exportar.');
         return;
       }
 
-      btnConfirmExport.disabled = true;
-      btnConfirmExport.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando CSV...';
+      const selectedCols = Array.from(checkedBoxes).map(cb => cb.value);
+      
+      const btnSubmit = document.getElementById('btnRunExport');
+      const originalHtml = btnSubmit.innerHTML;
+      btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i> Gerando...';
+      btnSubmit.disabled = true;
 
       try {
-        const data = await fetchCustomDoctorsData(selectedFields);
-        const csvContent = convertToCSV(data, selectedFields);
-        const dateStr = new Date().toISOString().slice(0, 10);
-        downloadCSV(csvContent, `relatorio_medicos_${dateStr}.csv`);
-        if (modalExport) modalExport.classList.remove('active');
+        const allData = await fetchCustomDoctorsData(selectedCols);
+        if (!allData || allData.length === 0) {
+          alert('Nenhum dado encontrado para exportar.');
+          return;
+        }
+        const csvString = convertToCSV(allData, selectedCols);
+        downloadCSV(csvString, 'relatorio_medicos_pmmb.csv');
+        closeExport();
       } catch (err) {
-        console.error('Erro na exportação CSV:', err);
-        alert('Erro ao exportar dados. Tente novamente.');
+        console.error(err);
+        alert('Erro ao gerar relatório: ' + err.message);
       } finally {
-        btnConfirmExport.disabled = false;
-        btnConfirmExport.innerHTML = '<i class="fas fa-download"></i> Baixar CSV';
+        btnSubmit.innerHTML = originalHtml;
+        btnSubmit.disabled = false;
       }
     });
   }
 }
+
+
+
+async function fetchCustomDoctorsData(columns) {
+  let allData = [];
+  let from = 0;
+  const size = 1000;
+  let fetchMore = true;
+  const colsString = columns.join(',');
+
+  while (fetchMore) {
+    const { data, error } = await supabaseClient
+      .from('doctors')
+      .select(colsString)
+      .range(from, from + size - 1);
+    
+    if (error) {
+      throw error;
+    }
+    
+    if (data && data.length > 0) {
+      allData = allData.concat(data);
+      from += size;
+    } else {
+      fetchMore = false;
+    }
+  }
+  return allData;
+}
+

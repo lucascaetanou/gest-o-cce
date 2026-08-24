@@ -46,7 +46,9 @@ function setupModalCloseListeners() {
     { btnId: 'btnCloseTutorModal', modalId: 'modalTutor' },
     { btnId: 'btnCloseProcessoModal', modalId: 'modalProcesso' },
     { btnId: 'btnCloseRegiaoModal', modalId: 'modalRegiao' },
-    { btnId: 'btnCloseExportModal', modalId: 'modalExport' }
+    { btnId: 'btnCloseExportModal', modalId: 'modalExport' },
+    { btnId: 'btnCloseNovoProcessoModal', modalId: 'modalNovoProcesso' },
+    { btnId: 'btnCancelProcesso', modalId: 'modalNovoProcesso' }
   ];
 
   modalConfigs.forEach(({ btnId, modalId }) => {

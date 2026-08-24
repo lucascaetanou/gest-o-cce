@@ -1,46 +1,46 @@
 // ============================================
-// Gestão CCE — Utilitários e Helpers Compartilhados
+// Gestão CCE — Utilitários Compartilhados
 // ============================================
 
-// Normalização para busca insensível a acentos e maiúsculas
 function normStr(str) {
   if (!str) return '';
   return String(str)
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
 }
 
-// Sanitização de HTML para prevenção de XSS
+
 function escapeHTML(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>'"]/g, 
-    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  if (typeof str !== 'string') return str;
+  return str.replace(/[&<>'"]/g, 
+    tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag)
   );
 }
 
-// Máscara de CPF para privacidade (Ex: ***.456.789-**)
+
+
 function maskCPF(cpf) {
-  if (!cpf) return '-';
-  const clean = String(cpf).replace(/\D/g, '');
-  if (clean.length === 11) {
-    return `***.${clean.substring(3, 6)}.${clean.substring(6, 9)}-**`;
-  }
-  return '***.***.***-**';
-}
+  if (!cpf || cpf === '-') return '-';
+  const clean = cpf.replace(/\D/g, '');
+  if (clean.length < 11) return '***.***.***-**';
+  return '***.' + clean.substring(3, 6) + '.' + clean.substring(6, 9) + '-**';
 
-// Máscara de Conta Bancária (Ex: Ag: **** / Conta: *****-4)
-function maskBankAccount(acc) {
-  if (!acc) return '-';
-  const str = String(acc).trim();
-  if (str.length > 4) {
-    return `****-${str.slice(-2)}`;
-  }
-  return '****';
-}
 
-// Animação de contadores numéricos
+function maskBankAccount(val) {
+  if (!val || val === '-') return '****';
+  const s = String(val);
+  if (s.length <= 2) return '****';
+  return '****' + s.substring(s.length - 2);
+
+
 function animateCounter(elementId, targetValue) {
   const el = document.getElementById(elementId);
   if (!el) return;
@@ -52,6 +52,7 @@ function animateCounter(elementId, targetValue) {
   function update(currentTime) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
     const eased = 1 - Math.pow(1 - progress, 3);
     const currentValue = Math.round(startValue + (targetValue - startValue) * eased);
     el.textContent = currentValue;
@@ -60,44 +61,42 @@ function animateCounter(elementId, targetValue) {
   requestAnimationFrame(update);
 }
 
-// Conversor de objetos para CSV formatado em UTF-8 com BOM
-function convertToCSV(objArray, fields) {
-  const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
-  let str = '';
-  
-  const headers = fields.map(f => `"${f.label.replace(/"/g, '""')}"`).join(';');
-  str += headers + '\r\n';
-  
-  for (let i = 0; i < array.length; i++) {
-    let line = '';
-    for (let j = 0; j < fields.length; j++) {
-      if (j > 0) line += ';';
-      const fieldKey = fields[j].key;
-      let val = array[i][fieldKey];
-      
-      if (val === null || val === undefined) {
-        val = '';
-      } else {
-        val = String(val).replace(/"/g, '""');
-      }
-      line += `"${val}"`;
+
+function convertToCSV(dataArray, headers) {
+  const escapeCsvValue = (val) => {
+    if (val === null || val === undefined) return '""';
+    const str = String(val);
+    if (str.includes(';') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
     }
-    str += line + '\r\n';
+    return str;
+  };
+
+  const csvRows = [];
+  
+  // Header row
+  csvRows.push(headers.join(';'));
+
+  // Data rows
+  for (const row of dataArray) {
+    const values = headers.map(header => escapeCsvValue(row[header]));
+    csvRows.push(values.join(';'));
   }
-  return str;
+
+  // Use \uFEFF to force UTF-8 BOM so Excel opens it with correct accents
+  return '\uFEFF' + csvRows.join('\n');
 }
 
-// Download automático de arquivos CSV no navegador
-function downloadCSV(csvContent, fileName) {
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+
+function downloadCSV(csvContent, filename) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', fileName);
+  link.setAttribute('download', filename);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
