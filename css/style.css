@@ -1072,48 +1072,59 @@ body {
 .region-cariri.active polygon, .region-cariri.active path       { fill: rgba(217, 119, 6, 0.6); }
 
 
-/* Map Text Labels */
+/* Map Text Labels & City Markers (Dark Theme) */
 .map-label {
-  fill: var(--text-primary);
+  fill: #ffffff;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   font-family: 'Inter', sans-serif;
   text-anchor: middle;
   pointer-events: none;
-  paint-order: stroke;
-  stroke: rgba(10, 14, 39, 0.7);
-  stroke-width: 3px;
+  paint-order: stroke fill;
+  stroke: #0a0e27;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
 }
 
 .map-sublabel {
-  fill: var(--text-secondary);
-  font-size: 9px;
-  font-weight: 400;
+  fill: #c4b5fd;
+  font-size: 10px;
+  font-weight: 600;
   font-family: 'Inter', sans-serif;
   text-anchor: middle;
   pointer-events: none;
-  paint-order: stroke;
-  stroke: rgba(10, 14, 39, 0.6);
-  stroke-width: 2px;
+  paint-order: stroke fill;
+  stroke: #0a0e27;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
 }
 
 /* Map City Markers */
 .map-city {
-  fill: rgba(255, 255, 255, 0.6);
+  fill: #ffffff;
+  stroke: #0a0e27;
+  stroke-width: 1px;
   pointer-events: none;
 }
 
 .map-city-capital {
-  fill: #fff;
-  filter: drop-shadow(0 0 4px rgba(255,255,255,0.4));
+  fill: #38bdf8;
+  stroke: #ffffff;
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.6));
 }
 
 .map-city-label {
-  fill: rgba(255, 255, 255, 0.45);
-  font-size: 8px;
+  fill: #f8fafc;
+  font-size: 8.5px;
+  font-weight: 600;
   font-family: 'Inter', sans-serif;
   text-anchor: middle;
   pointer-events: none;
+  paint-order: stroke fill;
+  stroke: #0a0e27;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
 }
 
 /* Map Legend */
@@ -1678,4 +1689,135 @@ textarea.form-input {
 
 [data-theme="light"] .modal-content {
   background: #ffffff;
+}
+
+/* ============================================
+   UNIVERSAL SELECT & OPTION STYLING (FIX CORES)
+   ============================================ */
+select {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+select option {
+  background-color: #111638 !important;
+  color: #f0f0ff !important;
+  padding: 0.5rem;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+}
+
+/* Select de Região no Dashboard */
+.dash-region-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-secondary);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+.dash-region-filter:hover {
+  border-color: var(--accent-primary);
+}
+.dash-region-filter select {
+  background: transparent !important;
+  border: none;
+  color: var(--text-primary) !important;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* ============================================
+   LIGHT THEME ENHANCEMENTS & MAP CONTRAST
+   ============================================ */
+[data-theme="light"] select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] select option:hover,
+[data-theme="light"] select option:focus,
+[data-theme="light"] select option:checked {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .dash-region-filter {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* Mapa no Tema Claro (Alto Contraste e Nitidez Total) */
+[data-theme="light"] .map-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .map-svg-wrapper {
+  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.04) 0%, #f8fafc 75%);
+}
+
+[data-theme="light"] .map-region polygon,
+[data-theme="light"] .map-region path {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+[data-theme="light"] .region-norte polygon, [data-theme="light"] .region-norte path         { fill: #d8b4fe; }
+[data-theme="light"] .region-fortaleza polygon, [data-theme="light"] .region-fortaleza path { fill: #67e8f9; }
+[data-theme="light"] .region-sertao polygon, [data-theme="light"] .region-sertao path       { fill: #c4b5fd; }
+[data-theme="light"] .region-litoral polygon, [data-theme="light"] .region-litoral path     { fill: #fde68a; }
+[data-theme="light"] .region-cariri polygon, [data-theme="light"] .region-cariri path       { fill: #fed7aa; }
+
+[data-theme="light"] .map-label {
+  fill: #0f172a;
+  stroke: #ffffff;
+  stroke-width: 4px;
+  font-weight: 800;
+}
+
+[data-theme="light"] .map-sublabel {
+  fill: #334155;
+  stroke: #ffffff;
+  stroke-width: 3px;
+  font-weight: 700;
+}
+
+[data-theme="light"] .map-city {
+  fill: #0284c7;
+  stroke: #ffffff;
+  stroke-width: 1.5px;
+}
+
+[data-theme="light"] .map-city-capital {
+  fill: #0369a1;
+  stroke: #ffffff;
+  stroke-width: 2px;
+}
+
+[data-theme="light"] .map-city-label {
+  fill: #1e293b;
+  stroke: #ffffff;
+  stroke-width: 2.5px;
+  font-weight: 700;
+}
+
+[data-theme="light"] .map-report {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
 }
