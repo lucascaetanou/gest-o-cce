@@ -1381,13 +1381,12 @@ textarea.form-input {
 
 /* ============================================
    MAGIC BENTO COMPONENT EFFECT (React Bits Style)
+   Clean, Smooth & Stable (No layout shifts)
    ============================================ */
 .magic-bento-card {
   position: relative;
   overflow: hidden;
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.35s ease;
-  transform-style: preserve-3d;
-  will-change: transform;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 /* Spotlight glow background following the mouse cursor */
@@ -1400,14 +1399,13 @@ textarea.form-input {
   bottom: 0;
   border-radius: inherit;
   background: radial-gradient(
-    450px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(124, 58, 237, 0.16),
-    rgba(6, 182, 212, 0.08) 35%,
-    rgba(16, 185, 129, 0.03) 60%,
+    400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(124, 58, 237, 0.12),
+    rgba(6, 182, 212, 0.05) 40%,
     transparent 80%
   );
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
   z-index: 1;
 }
@@ -1418,35 +1416,37 @@ textarea.form-input {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1.5px;
+  padding: 1px;
   background: radial-gradient(
-    320px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(124, 58, 237, 0.9),
-    rgba(6, 182, 212, 0.6) 40%,
-    transparent 75%
+    300px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(124, 58, 237, 0.8),
+    rgba(6, 182, 212, 0.4) 40%,
+    transparent 70%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
   z-index: 2;
 }
 
-.magic-bento-card[data-hover="true"]::before,
-.magic-bento-card[data-hover="true"]::after {
+.magic-bento-card:hover::before,
+.magic-bento-card:hover::after {
   opacity: 1;
 }
 
-.magic-bento-card[data-hover="true"] {
-  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-4px) scale3d(1.018, 1.018, 1.018);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 25px rgba(124, 58, 237, 0.2);
+.magic-bento-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3), 0 0 20px rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.3);
 }
 
-/* Ensure inner contents stay clear and above the glow overlay */
+/* Ensure inner contents stay above the glow overlay */
 .magic-bento-card > * {
   position: relative;
   z-index: 3;
 }
+
 
