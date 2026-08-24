@@ -18,7 +18,7 @@ async function loadDashboardStats() {
     // 1. Carregar dados (apenas se ainda não estiver em memória)
     if (window.dashboardAllDoctors.length === 0) {
       window.dashboardAllDoctors = await fetchAllDoctors(
-        'perfil_profissional,ativo_inativo,status,regiao_saude,municipio_atuacao,modalidade'
+        'perfil_profissional,ativo_inativo,status,regiao_saude,municipio_atuacao,modalidade,eixo_vaga'
       );
     }
 
@@ -354,36 +354,42 @@ function updateTipoProfissionalChart(doctors) {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const borderColor = isLight ? '#ffffff' : '#111638';
 
-  // Cores modernas por perfil
+  // Cores distintas por Eixo da Vaga
   const colorPalette = {
-    'CRM BRASIL': '#10b981',       // Emerald
-    'MFC CELETISTA': '#f59e0b',    // Amber
-    'INTERCAMBISTA': '#f43f5e',    // Rose
-    'BOLSISTA': '#06b6d4',         // Cyan
-    'TUTOR': '#8b5cf6',            // Violet
-    'NÃO INFORMADO': '#3b82f6',     // Blue
-    'OUTROS': '#64748b'            // Slate
+    'VÍNCULO': '#10b981',        // Emerald Green
+    'ESTRATÉGICO': '#8b5cf6',    // Violet / Purple
+    'FORMAÇÃO': '#06b6d4',       // Cyan Blue
+    'NÃO INFORMADO': '#64748b',  // Slate Gray
+    'OUTROS': '#f59e0b'          // Amber
   };
 
-  const dataMap = {};
+  const dataMap = {
+    'VÍNCULO': 0,
+    'ESTRATÉGICO': 0,
+    'FORMAÇÃO': 0
+  };
   let totalAtivos = 0;
 
   doctors.filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
-    let perfil = (d.perfil_profissional || 'Não Informado').trim().toUpperCase();
-    if (perfil.includes('CRM') && perfil.includes('BRASIL')) perfil = 'CRM BRASIL';
-    else if (perfil.includes('CELETISTA')) perfil = 'MFC CELETISTA';
-    else if (perfil.includes('INTERCAMBISTA')) perfil = 'INTERCAMBISTA';
-    else if (perfil.includes('BOLSISTA')) perfil = 'BOLSISTA';
-    else if (perfil.includes('TUTOR')) perfil = 'TUTOR';
-    else if (!perfil || perfil === 'NÃO INFORMADO') perfil = 'NÃO INFORMADO';
+    let rawEixo = (d.eixo_vaga || '').trim().toUpperCase();
+    let eixo = 'NÃO INFORMADO';
 
-    dataMap[perfil] = (dataMap[perfil] || 0) + 1;
+    if (rawEixo.includes('VINCULO') || rawEixo.includes('VÍNCULO')) eixo = 'VÍNCULO';
+    else if (rawEixo.includes('ESTRATEGICO') || rawEixo.includes('ESTRATÉGICO')) eixo = 'ESTRATÉGICO';
+    else if (rawEixo.includes('FORMACAO') || rawEixo.includes('FORMAÇÃO')) eixo = 'FORMAÇÃO';
+    else if (rawEixo) eixo = rawEixo;
+
+    dataMap[eixo] = (dataMap[eixo] || 0) + 1;
     totalAtivos++;
   });
 
-  const sortedProfiles = Object.entries(dataMap).sort((a, b) => b[1] - a[1]);
-  const labels = sortedProfiles.map(p => p[0]);
-  const data = sortedProfiles.map(p => p[1]);
+  // Remover categorias com 0 para exibição limpa
+  const sortedEixos = Object.entries(dataMap)
+    .filter(([_, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const labels = sortedEixos.map(p => p[0]);
+  const data = sortedEixos.map(p => p[1]);
   const backgroundColors = labels.map(l => colorPalette[l] || '#64748b');
 
   if (centerVal) centerVal.textContent = totalAtivos.toLocaleString('pt-BR');
@@ -434,7 +440,7 @@ function updateTipoProfissionalChart(doctors) {
   // Renderizar Legenda Rica Customizada (HTML)
   if (legendContainer) {
     legendContainer.innerHTML = '';
-    sortedProfiles.forEach(([perfil, count], idx) => {
+    sortedEixos.forEach(([eixo, count], idx) => {
       const color = backgroundColors[idx];
       const pct = totalAtivos > 0 ? ((count / totalAtivos) * 100).toFixed(1) : 0;
 
@@ -444,11 +450,11 @@ function updateTipoProfissionalChart(doctors) {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.35rem 0.55rem;
+        padding: 0.45rem 0.65rem;
         border-radius: var(--radius-sm);
         transition: all 0.2s ease;
         cursor: pointer;
-        font-size: 0.82rem;
+        font-size: 0.85rem;
       `;
       row.onmouseover = () => {
         row.style.background = 'var(--surface-hover)';
@@ -462,13 +468,13 @@ function updateTipoProfissionalChart(doctors) {
       };
 
       row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.55rem; min-width: 0;">
-          <span style="width: 9px; height: 9px; border-radius: 50%; background: ${color}; flex-shrink: 0; box-shadow: 0 0 6px ${color}80;"></span>
-          <span style="font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(perfil)}</span>
+        <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
+          <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; flex-shrink: 0; box-shadow: 0 0 8px ${color}80;"></span>
+          <span style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(eixo)}</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.55rem; flex-shrink: 0; margin-left: 0.5rem;">
-          <span style="font-weight: 700; color: var(--text-primary);">${count.toLocaleString('pt-BR')}</span>
-          <span style="color: var(--text-muted); font-size: 0.75rem; min-width: 38px; text-align: right;">${pct}%</span>
+        <div style="display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; margin-left: 0.75rem;">
+          <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">${count.toLocaleString('pt-BR')}</span>
+          <span style="color: var(--text-muted); font-size: 0.78rem; min-width: 42px; text-align: right; font-weight: 500;">${pct}%</span>
         </div>
       `;
       legendContainer.appendChild(row);
