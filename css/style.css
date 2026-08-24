@@ -1378,3 +1378,75 @@ textarea.form-input {
   resize: vertical;
   min-height: 100px;
 }
+
+/* ============================================
+   MAGIC BENTO COMPONENT EFFECT (React Bits Style)
+   ============================================ */
+.magic-bento-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Spotlight glow background following the mouse cursor */
+.magic-bento-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    450px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(124, 58, 237, 0.16),
+    rgba(6, 182, 212, 0.08) 35%,
+    rgba(16, 185, 129, 0.03) 60%,
+    transparent 80%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glowing border overlay following the mouse cursor */
+.magic-bento-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: radial-gradient(
+    320px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(124, 58, 237, 0.9),
+    rgba(6, 182, 212, 0.6) 40%,
+    transparent 75%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.magic-bento-card[data-hover="true"]::before,
+.magic-bento-card[data-hover="true"]::after {
+  opacity: 1;
+}
+
+.magic-bento-card[data-hover="true"] {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-4px) scale3d(1.018, 1.018, 1.018);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 25px rgba(124, 58, 237, 0.2);
+}
+
+/* Ensure inner contents stay clear and above the glow overlay */
+.magic-bento-card > * {
+  position: relative;
+  z-index: 3;
+}
+
