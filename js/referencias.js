@@ -66,6 +66,7 @@ async function loadReferencias() {
 
     // Render first tab by default
     renderReferenciasTable(allReferencias);
+    loadMapData();
 
   } catch (error) {
     console.error(error);

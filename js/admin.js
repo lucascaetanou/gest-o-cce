@@ -119,6 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupExportLogic();
 
   loadReferencias();
+  loadMapData();
   loadSupervisores();
   loadTutores();
   setupTutoresLogic();
