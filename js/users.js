@@ -132,3 +132,5 @@ async function updateStatus(userId, newStatus) {
   } catch (error) {
     showAlert('Erro ao atualizar usuário.', 'error');
   }
+}
+

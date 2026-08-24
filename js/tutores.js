@@ -2,6 +2,8 @@
 // Gestão CCE — Módulo de Tutores (PMMB)
 // ============================================
 
+window.tutoresData = [];
+
 window.tutoresData = []; // Cache para a tabela e o modal
 
 async function loadTutores() {
@@ -241,4 +243,5 @@ window.showTutorDetails = function(id) {
   
   modal.classList.add('active');
 };
+
 

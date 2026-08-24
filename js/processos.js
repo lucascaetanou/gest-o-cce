@@ -2,6 +2,8 @@
 // Gestão CCE — Módulo de Processos Administrativos
 // ============================================
 
+window.processosData = [];
+
 function matchMedicoProcesso(docName, processo) {
   if (!docName || !processo) return false;
   const d = normStr(docName);
@@ -596,3 +598,6 @@ function exportProcessosExcel(data) {
   link.download = 'processos_administrativos_' + new Date().toISOString().slice(0,10) + '.csv';
   link.click();
   URL.revokeObjectURL(link.href);
+  showAlert('Exportação realizada com sucesso!', 'success');
+}
+

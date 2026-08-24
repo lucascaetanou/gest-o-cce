@@ -2,6 +2,8 @@
 // Gestão CCE — Módulo de Supervisores (PMMB)
 // ============================================
 
+window.supervisoresData = [];
+
 window.supervisoresData = []; // Cache para o modal
 
 async function loadSupervisores() {
@@ -127,4 +129,5 @@ window.showSupervisorDetails = function(id) {
   
   modal.classList.add('active');
 };
+
 

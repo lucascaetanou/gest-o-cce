@@ -275,6 +275,7 @@ function showRegionReport(macroRegiao, responsavel) {
       </div>
     </div>
   `;
+}
 
 
 window.exportRegionCSV = function(macroRegiao) {
@@ -296,4 +297,5 @@ window.exportRegionCSV = function(macroRegiao) {
   const safeName = macroRegiao.toLowerCase().replace(/[^a-z0-9]/g, '_');
   downloadCSV(csvString, `relatorio_regiao_${safeName}.csv`);
 };
+
 
