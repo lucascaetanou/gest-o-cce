@@ -4,6 +4,12 @@
 
 window.dashboardReferencias = [];
 
+// Instâncias dos gráficos para atualização
+let chartRegiao = null;
+let chartTipoProf = null;
+let statusChart = null;
+let monthlyChart = null;
+
 async function loadDashboardStats() {
   if (!supabaseClient) return;
 

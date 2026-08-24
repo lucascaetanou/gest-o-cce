@@ -4,6 +4,11 @@
 
 window.processosData = [];
 
+// Instâncias dos gráficos para atualização
+let chartProcStatus = null;
+let chartProcEquipes = null;
+let chartProcInteressados = null;
+
 function matchMedicoProcesso(docName, processo) {
   if (!docName || !processo) return false;
   const d = normStr(docName);
