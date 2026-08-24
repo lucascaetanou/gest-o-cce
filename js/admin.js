@@ -41,12 +41,16 @@ function setupNavigation() {
 // Configuração dos eventos de fechamento de Modais
 function setupModalCloseListeners() {
   const modalConfigs = [
+    { btnId: 'btnCloseModal', modalId: 'modalMedico' },
     { btnId: 'btnCloseMedicoModal', modalId: 'modalMedico' },
     { btnId: 'btnCloseSupervisorModal', modalId: 'modalSupervisor' },
     { btnId: 'btnCloseTutorModal', modalId: 'modalTutor' },
     { btnId: 'btnCloseProcessoModal', modalId: 'modalProcesso' },
     { btnId: 'btnCloseRegiaoModal', modalId: 'modalRegiao' },
     { btnId: 'btnCloseExportModal', modalId: 'modalExport' },
+    { btnId: 'btnCancelExport', modalId: 'modalExport' },
+    { btnId: 'btnCloseMaterialModal', modalId: 'modalMaterial' },
+    { btnId: 'btnCancelMaterial', modalId: 'modalMaterial' },
     { btnId: 'btnCloseNovoProcessoModal', modalId: 'modalNovoProcesso' },
     { btnId: 'btnCancelProcesso', modalId: 'modalNovoProcesso' }
   ];
@@ -55,10 +59,30 @@ function setupModalCloseListeners() {
     const btn = document.getElementById(btnId);
     const modal = document.getElementById(modalId);
     if (btn && modal) {
-      btn.addEventListener('click', () => modal.classList.remove('active'));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        modal.classList.remove('active');
+      });
       modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.classList.remove('active');
       });
+    }
+  });
+
+  // Fechamento universal para qualquer modal com classe .btn-close
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.querySelectorAll('.btn-close, .modal-close, [data-dismiss="modal"]').forEach(closeBtn => {
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        modal.classList.remove('active');
+      });
+    });
+  });
+
+  // Fechar modal ao pressionar ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
     }
   });
 }
