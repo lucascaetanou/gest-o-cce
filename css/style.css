@@ -1061,29 +1061,37 @@ body {
 .region-cariri polygon, .region-cariri path       { fill: #ea580c; fill-opacity: 0.45; }
 
 .region-norte:hover polygon, .region-norte:hover path,
-.region-norte.active polygon, .region-norte.active path         { fill-opacity: 0.75; }
+.region-norte.active polygon, .region-norte.active path,
+.region-norte.active-hover polygon, .region-norte.active-hover path         { fill-opacity: 0.75; }
 .region-fortaleza:hover polygon, .region-fortaleza:hover path,
-.region-fortaleza.active polygon, .region-fortaleza.active path { fill-opacity: 0.8; }
+.region-fortaleza.active polygon, .region-fortaleza.active path,
+.region-fortaleza.active-hover polygon, .region-fortaleza.active-hover path { fill-opacity: 0.8; }
 .region-sertao:hover polygon, .region-sertao:hover path,
-.region-sertao.active polygon, .region-sertao.active path       { fill-opacity: 0.75; }
+.region-sertao.active polygon, .region-sertao.active path,
+.region-sertao.active-hover polygon, .region-sertao.active-hover path       { fill-opacity: 0.75; }
 .region-litoral:hover polygon, .region-litoral:hover path,
-.region-litoral.active polygon, .region-litoral.active path     { fill-opacity: 0.75; }
+.region-litoral.active polygon, .region-litoral.active path,
+.region-litoral.active-hover polygon, .region-litoral.active-hover path     { fill-opacity: 0.75; }
 .region-cariri:hover polygon, .region-cariri:hover path,
-.region-cariri.active polygon, .region-cariri.active path       { fill-opacity: 0.75; }
+.region-cariri.active polygon, .region-cariri.active path,
+.region-cariri.active-hover polygon, .region-cariri.active-hover path       { fill-opacity: 0.75; }
 
 /* Floating Badges (Tema Escuro) */
 .map-badge {
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.map-badge:hover {
-  transform: scale(1.06);
+  pointer-events: all;
 }
 .map-badge .badge-bg {
   fill: #111638;
   stroke: rgba(255, 255, 255, 0.16);
   stroke-width: 1px;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+}
+.map-badge:hover .badge-bg {
+  stroke: #60a5fa;
+  stroke-width: 1.8px;
+  filter: drop-shadow(0 6px 18px rgba(96, 165, 250, 0.45));
 }
 .map-badge .badge-title {
   fill: #f8fafc;
@@ -1820,9 +1828,15 @@ select option:checked {
 /* Badges Flutuantes no Modo Claro */
 [data-theme="light"] .map-badge .badge-bg {
   fill: #ffffff;
-  stroke: rgba(0, 0, 0, 0.08);
+  stroke: rgba(0, 0, 0, 0.1);
   stroke-width: 1px;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.1));
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+}
+[data-theme="light"] .map-badge:hover .badge-bg {
+  stroke: #2563eb;
+  stroke-width: 1.8px;
+  filter: drop-shadow(0 5px 14px rgba(37, 99, 235, 0.25));
 }
 [data-theme="light"] .map-badge .badge-title {
   fill: #0f172a;

@@ -139,26 +139,36 @@ async function loadMapData() {
     if (error) throw error;
     window.mapReferencias = refs || [];
     
-    // Setup click handlers for regions and floating badges
-    const clickHandler = (element) => {
-      const macroRegiao = element.dataset.region;
-      const responsavel = element.dataset.responsavel;
-      
-      // Highlight region on map
+    // Setup click e hover estáveis para regiões e badges
+    const selectRegion = (macroRegiao, responsavel) => {
       document.querySelectorAll('.map-region').forEach(r => {
         if (r.dataset.region === macroRegiao) r.classList.add('active');
         else r.classList.remove('active');
       });
-      
       showRegionReport(macroRegiao, responsavel);
     };
 
     document.querySelectorAll('.map-region').forEach(region => {
-      region.addEventListener('click', () => clickHandler(region));
+      region.addEventListener('click', () => {
+        selectRegion(region.dataset.region, region.dataset.responsavel);
+      });
     });
 
     document.querySelectorAll('.map-badge').forEach(badge => {
-      badge.addEventListener('click', () => clickHandler(badge));
+      const reg = badge.dataset.region;
+      const resp = badge.dataset.responsavel;
+
+      badge.addEventListener('click', () => {
+        selectRegion(reg, resp);
+      });
+
+      // Sincronizar hover suave no mapa
+      badge.addEventListener('mouseenter', () => {
+        document.querySelectorAll(`.map-region[data-region="${reg}"]`).forEach(r => r.classList.add('active-hover'));
+      });
+      badge.addEventListener('mouseleave', () => {
+        document.querySelectorAll(`.map-region[data-region="${reg}"]`).forEach(r => r.classList.remove('active-hover'));
+      });
     });
   } catch (err) {
     console.error('Error loading map data:', err);
