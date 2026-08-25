@@ -4,8 +4,6 @@
 
 window.supervisoresData = [];
 
-window.supervisoresData = []; // Cache para o modal
-
 async function loadSupervisores() {
   const tbody = document.getElementById('supervisoresTableBody');
   if (!tbody) return;
@@ -19,44 +17,9 @@ async function loadSupervisores() {
     if (error) throw error;
     
     window.supervisoresData = data || [];
-    
-    if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:3rem">Nenhum supervisor cadastrado.</td></tr>';
-      return;
-    }
-    
-    tbody.innerHTML = '';
-    data.forEach(sup => {
-      const tr = document.createElement('tr');
-      
-      // badges status
-      let badgeClass = 'badge-pending';
-      let badgeText = escapeHTML(sup.situacao || 'Desconhecido');
-      if (badgeText.toLowerCase().includes('ativo') || badgeText.toLowerCase().includes('validado')) badgeClass = 'badge-approved';
-      else if (badgeText.toLowerCase().includes('inativo') || badgeText.toLowerCase().includes('desligado')) badgeClass = 'badge-rejected';
-      
-      tr.innerHTML = `
-        <td>
-          <div style="font-weight:600; color:var(--text-primary)">${escapeHTML(sup.nome_supervisor || '-')}</div>
-          <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(sup.email || '-')}</div>
-        </td>
-        <td>
-          <div style="font-weight:500">${escapeHTML(sup.sigla_inst || '-')}</div>
-          <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(sup.uf_inst || '')}</div>
-        </td>
-        <td>
-          <div>${escapeHTML(sup.telefone_1 || '-')}</div>
-          <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(sup.tipo_tel_1 || '')}</div>
-        </td>
-        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="showSupervisorDetails('${escapeHTML(sup.id)}')" title="Ver Detalhes">
-            <i class="fas fa-eye"></i>
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    populateSupervisorFilters(window.supervisoresData);
+    setupSupervisorFilters();
+    renderSupervisoresTable(window.supervisoresData);
     
   } catch (err) {
     console.error('Erro ao buscar supervisores:', err);
@@ -64,6 +27,199 @@ async function loadSupervisores() {
   }
 }
 
+function renderSupervisoresTable(data) {
+  const tbody = document.getElementById('supervisoresTableBody');
+  const countBadge = document.getElementById('supervisoresCountBadge');
+  if (!tbody) return;
+
+  if (countBadge) {
+    const total = window.supervisoresData.length;
+    countBadge.textContent = `${data.length} de ${total} registros`;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center; padding:3.5rem 1rem;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
+            <i class="fas fa-search" style="font-size:2rem; color:var(--text-muted); opacity:0.5;"></i>
+            <div style="font-weight:600; color:var(--text-primary); font-size:1rem;">Nenhum supervisor encontrado</div>
+            <div style="font-size:0.85rem; color:var(--text-muted); max-width:350px;">Tente ajustar ou limpar os termos de busca e filtros selecionados.</div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:0.5rem; border:1px solid var(--border);" onclick="limparFiltrosSupervisores()">
+              <i class="fas fa-undo" style="margin-right:0.35rem;"></i> Limpar Filtros
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  tbody.innerHTML = '';
+  data.forEach(sup => {
+    const tr = document.createElement('tr');
+    
+    // badges status
+    let badgeClass = 'badge-pending';
+    let badgeText = escapeHTML(sup.situacao || 'Desconhecido');
+    if (badgeText.toLowerCase().includes('ativo') || badgeText.toLowerCase().includes('validado')) badgeClass = 'badge-approved';
+    else if (badgeText.toLowerCase().includes('inativo') || badgeText.toLowerCase().includes('desligado')) badgeClass = 'badge-rejected';
+    
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight:600; color:var(--text-primary)">${escapeHTML(sup.nome_supervisor || '-')}</div>
+        <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(sup.email || '-')}</div>
+      </td>
+      <td>
+        <div style="font-weight:500">${escapeHTML(sup.sigla_inst || sup.inst_supervisora || '-')}</div>
+        <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(sup.uf_inst || sup.regiao_inst || '')}</div>
+      </td>
+      <td>
+        <div>${escapeHTML(sup.telefone_1 || '-')}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(sup.tipo_tel_1 || '')}</div>
+      </td>
+      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="showSupervisorDetails('${escapeHTML(sup.id)}')" title="Ver Detalhes">
+          <i class="fas fa-eye"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function populateSupervisorFilters(data) {
+  if (!data) return;
+
+  const selectInst = document.getElementById('filterInstSupervisores');
+  const selectRegiao = document.getElementById('filterRegiaoSupervisores');
+  const selectSituacao = document.getElementById('filterSituacaoSupervisores');
+
+  if (selectInst && selectInst.options.length <= 1) {
+    const insts = [...new Set(data.map(d => d.inst_supervisora || d.sigla_inst).filter(Boolean))].sort();
+    insts.forEach(inst => {
+      const opt = document.createElement('option');
+      opt.value = inst;
+      opt.textContent = inst;
+      selectInst.appendChild(opt);
+    });
+  }
+
+  if (selectRegiao && selectRegiao.options.length <= 1) {
+    const regioes = [...new Set(data.map(d => d.regiao_inst || d.uf_inst).filter(Boolean))].sort();
+    regioes.forEach(reg => {
+      const opt = document.createElement('option');
+      opt.value = reg;
+      opt.textContent = reg;
+      selectRegiao.appendChild(opt);
+    });
+  }
+
+  if (selectSituacao && selectSituacao.options.length <= 1) {
+    const situacoes = [...new Set(data.map(d => d.situacao).filter(Boolean))].sort();
+    situacoes.forEach(sit => {
+      const opt = document.createElement('option');
+      opt.value = sit;
+      opt.textContent = sit;
+      selectSituacao.appendChild(opt);
+    });
+  }
+}
+
+function setupSupervisorFilters() {
+  const searchInput = document.getElementById('searchSupervisores');
+  const selectInst = document.getElementById('filterInstSupervisores');
+  const selectRegiao = document.getElementById('filterRegiaoSupervisores');
+  const selectSituacao = document.getElementById('filterSituacaoSupervisores');
+  const btnLimpar = document.getElementById('btnLimparFiltrosSupervisores');
+  const btnRefresh = document.getElementById('btnRefreshSupervisores');
+
+  if (searchInput && !searchInput.dataset.listenerAttached) {
+    searchInput.dataset.listenerAttached = 'true';
+    searchInput.addEventListener('input', filterSupervisores);
+  }
+
+  if (selectInst && !selectInst.dataset.listenerAttached) {
+    selectInst.dataset.listenerAttached = 'true';
+    selectInst.addEventListener('change', filterSupervisores);
+  }
+
+  if (selectRegiao && !selectRegiao.dataset.listenerAttached) {
+    selectRegiao.dataset.listenerAttached = 'true';
+    selectRegiao.addEventListener('change', filterSupervisores);
+  }
+
+  if (selectSituacao && !selectSituacao.dataset.listenerAttached) {
+    selectSituacao.dataset.listenerAttached = 'true';
+    selectSituacao.addEventListener('change', filterSupervisores);
+  }
+
+  if (btnLimpar && !btnLimpar.dataset.listenerAttached) {
+    btnLimpar.dataset.listenerAttached = 'true';
+    btnLimpar.addEventListener('click', limparFiltrosSupervisores);
+  }
+
+  if (btnRefresh && !btnRefresh.dataset.listenerAttached) {
+    btnRefresh.dataset.listenerAttached = 'true';
+    btnRefresh.addEventListener('click', () => loadSupervisores());
+  }
+}
+
+function filterSupervisores() {
+  const searchVal = normStr(document.getElementById('searchSupervisores')?.value || '');
+  const instVal = document.getElementById('filterInstSupervisores')?.value || '';
+  const regVal = document.getElementById('filterRegiaoSupervisores')?.value || '';
+  const sitVal = document.getElementById('filterSituacaoSupervisores')?.value || '';
+
+  const filtered = (window.supervisoresData || []).filter(s => {
+    // Busca textual
+    if (searchVal) {
+      const matchName = normStr(s.nome_supervisor).includes(searchVal);
+      const matchEmail = normStr(s.email).includes(searchVal);
+      const matchTel = normStr(s.telefone_1).includes(searchVal) || normStr(s.telefone_2).includes(searchVal);
+      const matchInst = normStr(s.sigla_inst).includes(searchVal) || normStr(s.inst_supervisora).includes(searchVal);
+      const matchUF = normStr(s.uf_inst).includes(searchVal) || normStr(s.regiao_inst).includes(searchVal);
+      if (!matchName && !matchEmail && !matchTel && !matchInst && !matchUF) return false;
+    }
+
+    // Filtro por Instituição
+    if (instVal) {
+      const sInst = s.inst_supervisora || s.sigla_inst;
+      if (sInst !== instVal) return false;
+    }
+
+    // Filtro por Região / UF
+    if (regVal) {
+      const sReg = s.regiao_inst || s.uf_inst;
+      if (sReg !== regVal) return false;
+    }
+
+    // Filtro por Situação
+    if (sitVal) {
+      if (s.situacao !== sitVal) return false;
+    }
+
+    return true;
+  });
+
+  renderSupervisoresTable(filtered);
+}
+
+window.limparFiltrosSupervisores = function() {
+  const searchInput = document.getElementById('searchSupervisores');
+  const selectInst = document.getElementById('filterInstSupervisores');
+  const selectRegiao = document.getElementById('filterRegiaoSupervisores');
+  const selectSituacao = document.getElementById('filterSituacaoSupervisores');
+
+  if (searchInput) searchInput.value = '';
+  if (selectInst) selectInst.value = '';
+  if (selectRegiao) selectRegiao.value = '';
+  if (selectSituacao) selectSituacao.value = '';
+
+  filterSupervisores();
+  if (window.showToast) window.showToast('Filtros de supervisores limpos', 'info');
+};
 
 window.showSupervisorDetails = function(id) {
   const sup = window.supervisoresData.find(s => s.id === id);
@@ -101,33 +257,7 @@ window.showSupervisorDetails = function(id) {
         </div>
       </div>
     </div>
-    
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
-      <!-- ENDEREÇO -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Endereço</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Logradouro:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.logradouro || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Município:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.municipio || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">CEP:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.cep || '-')}</span></div>
-        </div>
-      </div>
-      
-      <!-- DADOS PROFISSIONAIS -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Dados Profissionais</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Formação:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.formacao_profissional || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Titulação:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.titulacao || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Especialidade:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.especialidade_medica || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Órgão de Classe:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.orgao_classe || '-')} (${escapeHTML(sup.uf_conselho || '-')})</span></div>
-          <div><span style="color:var(--text-secondary)">Número Reg.:</span> <span style="color:var(--text-primary); font-family:monospace">${escapeHTML(sup.numero_registro || '-')}</span></div>
-        </div>
-      </div>
-    </div>
   `;
   
   modal.classList.add('active');
 };
-
-

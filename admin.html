@@ -8,7 +8,7 @@
   <meta name="description" content="Painel de Administração">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body style="display: none;">
   <div class="admin-layout">
@@ -459,10 +459,42 @@
         
         <!-- SECTION: SUPERVISORES -->
         <div id="sectionSupervisores" class="section">
+          <!-- Filtros da Tabela de Supervisores -->
+          <div class="table-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+              <!-- Busca textual -->
+              <div style="flex: 1; min-width: 250px; position: relative;">
+                <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" id="searchSupervisores" placeholder="Buscar por supervisor, e-mail, telefone..." style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem;">
+              </div>
+              
+              <!-- Dropdowns -->
+              <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+                <select id="filterInstSupervisores" style="padding: 0.75rem 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.85rem; cursor: pointer;">
+                  <option value="">Todas as Inst. Supervisoras</option>
+                </select>
+
+                <select id="filterRegiaoSupervisores" style="padding: 0.75rem 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.85rem; cursor: pointer;">
+                  <option value="">Todas as Regiões / UF</option>
+                </select>
+
+                <select id="filterSituacaoSupervisores" style="padding: 0.75rem 1rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.85rem; cursor: pointer;">
+                  <option value="">Todas as Situações</option>
+                </select>
+
+                <button class="btn btn-ghost btn-sm" id="btnLimparFiltrosSupervisores" title="Limpar Filtros" style="display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fas fa-filter-circle-xmark"></i> Limpar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Supervisores -->
           <div class="table-card">
             <div class="table-header">
               <h3><i class="fas fa-chalkboard-teacher" style="margin-right:0.5rem; color:var(--accent-info)"></i> Supervisores PMMB</h3>
-              <div style="display:flex; gap:0.5rem;">
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <span id="supervisoresCountBadge" style="font-size:0.78rem; color:var(--text-muted); margin-right:0.5rem;"></span>
                 <button class="btn btn-ghost btn-sm" id="btnRefreshSupervisores">
                   <i class="fas fa-sync-alt"></i> Atualizar
                 </button>
@@ -879,7 +911,7 @@
   <script src="js/dashboard.js?v=7"></script>
   <script src="js/medicos.js?v=4"></script>
   <script src="js/referencias.js?v=3"></script>
-  <script src="js/supervisores.js?v=3"></script>
+  <script src="js/supervisores.js?v=4"></script>
   <script src="js/tutores.js?v=3"></script>
   <script src="js/materiais.js?v=3"></script>
   <script src="js/processos.js?v=4"></script>
