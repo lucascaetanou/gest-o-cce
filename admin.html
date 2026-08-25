@@ -8,10 +8,12 @@
   <meta name="description" content="Painel de Administração">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body style="display: none;">
   <div class="admin-layout">
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -84,8 +86,13 @@
     <main class="main-content">
       <header class="header">
         <div class="header-left">
-          <h1 id="pageTitle">Dashboard</h1>
-          <p id="pageSubtitle">Visão geral do sistema</p>
+          <button id="btnMobileMenu" class="mobile-menu-btn" aria-label="Abrir Menu de Navegação" title="Abrir Menu">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div>
+            <h1 id="pageTitle">Dashboard</h1>
+            <p id="pageSubtitle">Visão geral do sistema</p>
+          </div>
         </div>
                 <div class="header-right">
           <button id="btnThemeToggle" class="btn btn-ghost btn-sm" title="Alternar Tema Claro / Escuro" style="border: 1px solid var(--border); padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;">
@@ -960,7 +967,7 @@
   <script src="js/users.js?v=3"></script>
 
   <!-- Orquestrador Principal -->
-  <script src="js/admin.js?v=5"></script>
+  <script src="js/admin.js?v=21"></script>
   <script src="js/magic-bento.js?v=2"></script>
 <!-- Modal Novo Material -->
         <div class="modal-overlay" id="modalMaterial">

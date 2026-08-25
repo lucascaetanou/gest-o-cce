@@ -88,6 +88,38 @@ function setupModalCloseListeners() {
 }
 
 // Inicialização e Verificação de Sessão do Admin
+// Configuração do Menu Mobile (Gaveta Lateral Suave)
+function setupMobileMenu() {
+  const btnMenu = document.getElementById('btnMobileMenu');
+  const sidebar = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('sidebarBackdrop');
+
+  if (!btnMenu || !sidebar || !backdrop) return;
+
+  const toggleSidebar = (open) => {
+    sidebar.classList.toggle('open', open);
+    backdrop.classList.toggle('active', open);
+  };
+
+  btnMenu.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = sidebar.classList.contains('open');
+    toggleSidebar(!isOpen);
+  });
+
+  backdrop.addEventListener('click', () => toggleSidebar(false));
+
+  // Fechar sidebar ao clicar em qualquer item no mobile
+  document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 1024) {
+        toggleSidebar(false);
+      }
+    });
+  });
+}
+
+// Inicialização Geral
 document.addEventListener('DOMContentLoaded', async () => {
   if (!supabaseClient) {
     showAlert('Supabase não configurado. Verifique as credenciais.', 'error');
@@ -134,6 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 5. Inicializar Navegação SPA, Modais e Alternador de Tema
   setupNavigation();
+  setupMobileMenu();
   setupModalCloseListeners();
   setupThemeToggle();
 
