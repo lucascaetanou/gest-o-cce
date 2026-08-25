@@ -139,18 +139,26 @@ async function loadMapData() {
     if (error) throw error;
     window.mapReferencias = refs || [];
     
-    // Setup region click handlers
-    document.querySelectorAll('.map-region').forEach(region => {
-      region.addEventListener('click', () => {
-        const macroRegiao = region.dataset.region;
-        const responsavel = region.dataset.responsavel;
-        
-        // Toggle active class
-        document.querySelectorAll('.map-region').forEach(r => r.classList.remove('active'));
-        region.classList.add('active');
-        
-        showRegionReport(macroRegiao, responsavel);
+    // Setup click handlers for regions and floating badges
+    const clickHandler = (element) => {
+      const macroRegiao = element.dataset.region;
+      const responsavel = element.dataset.responsavel;
+      
+      // Highlight region on map
+      document.querySelectorAll('.map-region').forEach(r => {
+        if (r.dataset.region === macroRegiao) r.classList.add('active');
+        else r.classList.remove('active');
       });
+      
+      showRegionReport(macroRegiao, responsavel);
+    };
+
+    document.querySelectorAll('.map-region').forEach(region => {
+      region.addEventListener('click', () => clickHandler(region));
+    });
+
+    document.querySelectorAll('.map-badge').forEach(badge => {
+      badge.addEventListener('click', () => clickHandler(badge));
     });
   } catch (err) {
     console.error('Error loading map data:', err);
