@@ -127,6 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // 1. Guardião Criptográfico: Validar token JWT da sessão ativa e permissão no Supabase
+  let currentProfile = null;
   try {
     const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
     if (sessionError || !session) {
@@ -148,6 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.replace('index.html');
       return;
     }
+    currentProfile = profile;
   } catch (err) {
     console.error('Erro de validação de acesso:', err);
     window.location.replace('index.html');
@@ -159,8 +161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 3. Atualizar nome do usuário no topo
   const adminName = document.getElementById('adminName');
-  if (adminName && profile.name) {
-    adminName.textContent = profile.name;
+  if (adminName && currentProfile && currentProfile.name) {
+    adminName.textContent = currentProfile.name;
   }
 
   // 4. Logout
