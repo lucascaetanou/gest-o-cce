@@ -126,23 +126,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // 1. Validar sessão ativa e permissão ADMIN
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) {
-    window.location.href = 'index.html';
-    return;
-  }
+  // 1. Guardião Criptográfico: Validar token JWT da sessão ativa e permissão no Supabase
+  try {
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session) {
+      document.body.innerHTML = '';
+      window.location.replace('index.html');
+      return;
+    }
 
-  const { data: profile } = await supabaseClient
-    .from('profiles')
-    .select('role, name, status')
-    .eq('id', session.user.id)
-    .single();
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('role, name, status')
+      .eq('id', session.user.id)
+      .single();
 
-  if (!profile || (profile.role !== 'ADMIN' && profile.status !== 'APPROVED')) {
-    alert('Acesso Negado. Sua conta aguarda aprovação.');
-    await supabaseClient.auth.signOut();
-    window.location.href = 'index.html';
+    if (profileError || !profile || (profile.role !== 'ADMIN' && profile.status !== 'APPROVED')) {
+      alert('Acesso Restrito: Sua conta não possui permissão de administrador ou está aguardando aprovação.');
+      await supabaseClient.auth.signOut();
+      document.body.innerHTML = '';
+      window.location.replace('index.html');
+      return;
+    }
+  } catch (err) {
+    console.error('Erro de validação de acesso:', err);
+    window.location.replace('index.html');
     return;
   }
 

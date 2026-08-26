@@ -121,10 +121,9 @@ if (loginForm) {
   });
 }
 
-// --- Register Form Logic ---
+// --- Register Form Logic (com sanitização e validação anti-injeção) ---
 const registerForm = document.getElementById('registerForm');
 if (registerForm) {
-  // Password strength indicator
   const passwordInput = document.getElementById('password');
   const strengthContainer = document.getElementById('passwordStrength');
   
@@ -151,56 +150,82 @@ if (registerForm) {
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!supabaseClient) {
-      showAlert('Supabase não configurado. Adicione suas chaves no auth.js', 'error');
+      showAlert('Supabase não configurado. Verifique as credenciais.', 'error');
       return;
     }
 
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-    const phone = document.getElementById('phone').value;
+    // Sanitização e limpeza de inputs
+    const name = document.getElementById('name').value.trim().replace(/<[^>]*>?/gm, '');
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const phone = document.getElementById('phone').value.trim().replace(/<[^>]*>?/gm, '');
     const password = document.getElementById('password').value;
     const btn = document.getElementById('btnSubmit');
-    const btnSpan = btn.querySelector('span');
+    const btnSpan = btn ? btn.querySelector('span') : null;
 
-    const originalText = btnSpan ? btnSpan.textContent : btn.textContent;
+    // Validação de formato de e-mail
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showAlert('Por favor, informe um e-mail válido.', 'error');
+      return;
+    }
+
+    if (password.length < 6) {
+      showAlert('A senha deve conter no mínimo 6 caracteres.', 'error');
+      return;
+    }
+
+    const originalText = btnSpan ? btnSpan.textContent : (btn ? btn.textContent : 'Solicitar Acesso');
     if (btnSpan) btnSpan.textContent = 'Processando...';
-    else btn.textContent = 'Processando...';
-    btn.disabled = true;
+    else if (btn) btn.textContent = 'Processando...';
+    if (btn) btn.disabled = true;
 
     try {
-      // 1. Create user in Supabase Auth
-      // Criar usuário com metadata (perfil criado via Trigger no banco)
+      // 1. Criar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
-          data: { name: name, phone: phone }
+          data: { name, phone }
         }
       });
       if (authError) throw authError;
 
-      // Perfil criado automaticamente pela Trigger handle_new_user()
-      // NÃO fazemos INSERT direto em profiles por segurança
+      // 2. Inserir perfil como PENDING
+      if (authData.user) {
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .upsert([{
+            id: authData.user.id,
+            name: name,
+            email: email,
+            phone: phone,
+            role: 'USER',
+            status: 'PENDING'
+          }]);
 
-      showAlert('Cadastro realizado! Sua conta passará por aprovação.', 'success');
+        if (profileError) {
+          console.warn('Nota de inserção de perfil:', profileError);
+        }
+      }
+
+      showAlert('Cadastro realizado com sucesso! Sua conta passará por aprovação do administrador.', 'success');
       registerForm.reset();
       
-      // Reset password strength bar
       if (strengthContainer) {
         const bar = strengthContainer.querySelector('.bar');
         if (bar) bar.style.width = '0%';
       }
       
       setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 3000);
+        window.location.replace('index.html');
+      }, 3500);
 
     } catch (error) {
-      showAlert(error.message, 'error');
+      showAlert(error.message || 'Erro ao realizar cadastro.', 'error');
     } finally {
       if (btnSpan) btnSpan.textContent = originalText;
-      else btn.textContent = originalText;
-      btn.disabled = false;
+      else if (btn) btn.textContent = originalText;
+      if (btn) btn.disabled = false;
     }
   });
 }
