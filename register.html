@@ -7,8 +7,8 @@
   <title>Cadastro | Gestão CCE</title>
   <meta name="description" content="Acesso à plataforma de gestão do Centro de Ciências Exatas">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=23">
+  <link rel="stylesheet" crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
   <div class="auth-wrapper">
@@ -18,7 +18,7 @@
     
     <div class="auth-card" style="max-width:480px">
       <div class="auth-logo-wrapper">
-        <img src="assets/logo.png?v=6" onerror="this.onerror=null; this.src=\'logo.png\';" alt="Gestão CCE" class="auth-logo-img">
+        <img src="assets/logo.png?v=6"logo.png\';" alt="Gestão CCE" class="auth-logo-img">
       </div>
       <h1 class="auth-title">Criar Conta</h1>
       <p class="auth-subtitle">Solicite acesso à plataforma</p>
@@ -51,7 +51,7 @@
           <label for="password">Senha</label>
           <div class="input-wrapper">
             <i class="fas fa-lock"></i>
-            <input type="password" id="password" required minlength="6" placeholder="Mínimo 6 caracteres">
+            <input type="password" id="password" required minlength="8" placeholder="Mínimo 8 caracteres">
           </div>
           <div id="passwordStrength" class="password-strength"><div class="bar"></div></div>
         </div>
@@ -65,8 +65,8 @@
     </div>
   </div>
   
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/auth.js?v=23"></script>
+  <script src="js/auth.js?v=24"></script>
 </body>
 </html>

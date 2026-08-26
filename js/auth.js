@@ -83,36 +83,35 @@ if (loginForm) {
         email,
         password
       });
-      if (authError) throw authError;
+      if (authError) {
+        throw new Error('E-mail ou senha incorretos.');
+      }
 
-      // 2. Fetch profile to check role and status
+      // 2. Fetch profile com campos específicos
       const { data: profile, error: profileError } = await supabaseClient
         .from('profiles')
-        .select('*')
+        .select('id, role, status, name')
         .eq('id', authData.user.id)
         .single();
 
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
+      if (profileError || !profile) {
         await supabaseClient.auth.signOut();
-        throw new Error('Erro ao buscar perfil: ' + (profileError.message || 'Contate o administrador.'));
+        throw new Error('Perfil de usuário não encontrado ou inativo.');
       }
 
       // 3. Route based on role/status
-      if (profile.role === 'ADMIN') {
-        window.location.href = 'admin.html';
-      } else if (profile.status === 'APPROVED') {
+      if (profile.role === 'ADMIN' || profile.status === 'APPROVED') {
         showAlert('Login realizado com sucesso!', 'success');
         setTimeout(() => {
-          window.location.href = 'admin.html';
-        }, 800);
+          window.location.replace('admin.html');
+        }, 600);
       } else {
         await supabaseClient.auth.signOut();
         throw new Error('Sua conta está aguardando aprovação do administrador.');
       }
 
     } catch (error) {
-      showAlert(error.message, 'error');
+      showAlert(error.message || 'Falha na autenticação.', 'error');
     } finally {
       if (btnSpan) btnSpan.textContent = originalText;
       else btn.textContent = originalText;
@@ -180,35 +179,23 @@ if (registerForm) {
     if (btn) btn.disabled = true;
 
     try {
-      // 1. Criar usuário no Supabase Auth
+      // 1. Criar usuário no Supabase Auth com metadados seguros
+      // O perfil é gerado de forma segura pela Trigger Server-Side (sem risco de escalação de privilégios)
       const { data: authData, error: authError } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
-          data: { name, phone }
+          data: { 
+            name: name, 
+            phone: phone 
+          }
         }
       });
-      if (authError) throw authError;
-
-      // 2. Inserir perfil como PENDING
-      if (authData.user) {
-        const { error: profileError } = await supabaseClient
-          .from('profiles')
-          .upsert([{
-            id: authData.user.id,
-            name: name,
-            email: email,
-            phone: phone,
-            role: 'USER',
-            status: 'PENDING'
-          }]);
-
-        if (profileError) {
-          console.warn('Nota de inserção de perfil:', profileError);
-        }
+      if (authError) {
+        throw new Error(authError.message || 'Erro ao processar solicitação de cadastro.');
       }
 
-      showAlert('Cadastro realizado com sucesso! Sua conta passará por aprovação do administrador.', 'success');
+      showAlert('Cadastro solicitado com sucesso! Sua conta passará por aprovação do administrador.', 'success');
       registerForm.reset();
       
       if (strengthContainer) {
@@ -218,10 +205,10 @@ if (registerForm) {
       
       setTimeout(() => {
         window.location.replace('index.html');
-      }, 3500);
+      }, 3000);
 
     } catch (error) {
-      showAlert(error.message || 'Erro ao realizar cadastro.', 'error');
+      showAlert(error.message || 'Erro ao solicitar cadastro. Tente novamente.', 'error');
     } finally {
       if (btnSpan) btnSpan.textContent = originalText;
       else if (btn) btn.textContent = originalText;
