@@ -296,7 +296,7 @@ function renderProcessosTable(data) {
             <i class="fas fa-gavel" style="font-size:2.2rem; opacity:0.4; margin-bottom:0.75rem; display:block;"></i>
             <div style="font-weight:600; color:var(--text-primary); font-size:1rem; margin-bottom:0.25rem;">Nenhum processo encontrado</div>
             <div style="font-size:0.85rem; margin-bottom:1rem;">Nenhum processo administrativo corresponde à busca.</div>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('btnLimparFiltrosProcessos')?.click()"><i class="fas fa-undo"></i> Limpar filtros</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('btnLimparFiltrosProc')?.click()"><i class="fas fa-undo"></i> Limpar filtros</button>
           </div>
         </td>
       </tr>

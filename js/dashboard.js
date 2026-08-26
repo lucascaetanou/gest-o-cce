@@ -266,7 +266,7 @@ window.filtrarMedicosPorMunicipio = function(municipio) {
   if (navMedicos) {
     navMedicos.click();
     setTimeout(() => {
-      const searchInput = document.getElementById('searchMedico');
+      const searchInput = document.getElementById('searchMedicoCity') || document.getElementById('searchMedico');
       if (searchInput) {
         searchInput.value = municipio;
         searchInput.dispatchEvent(new Event('input'));
