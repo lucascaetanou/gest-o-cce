@@ -38,10 +38,47 @@ function showAlert(message, type = 'error') {
   }
 }
 
-// --- Auto Check Active Session on Login Page ---
+// --- Auto Check Active Session / Recovery Event on Login Page ---
+let isPasswordRecoverySession = false;
+
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      isPasswordRecoverySession = true;
+      const modal = document.getElementById('forgotPasswordModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        if (typeof switchRecoveryStep === 'function') {
+          switchRecoveryStep('stepNewPassword');
+        }
+        const newPassInput = document.getElementById('newPassword');
+        if (newPassInput) setTimeout(() => newPassInput.focus(), 200);
+      }
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const loginForm = document.getElementById('loginForm');
-  if (loginForm && supabaseClient) {
+  
+  // Se a URL contiver hash de recovery, ativa a recuperação de senha
+  if (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+    isPasswordRecoverySession = true;
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+      if (typeof switchRecoveryStep === 'function') {
+        switchRecoveryStep('stepNewPassword');
+      }
+      const newPassInput = document.getElementById('newPassword');
+      if (newPassInput) setTimeout(() => newPassInput.focus(), 200);
+    }
+    return;
+  }
+
+  if (loginForm && supabaseClient && !isPasswordRecoverySession) {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
       const { data: profile } = await supabaseClient
@@ -341,7 +378,9 @@ if (forgotEmailForm) {
 
     try {
       recoveryEmailState = email;
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin
+      });
       if (error) throw error;
 
       const targetEl = document.getElementById('otpEmailTarget');
@@ -401,7 +440,9 @@ if (btnResendOtp) {
     if (!recoveryEmailState || !supabaseClient) return;
     try {
       btnResendOtp.disabled = true;
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(recoveryEmailState);
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(recoveryEmailState, {
+        redirectTo: window.location.origin
+      });
       if (error) throw error;
       showModalAlert('forgotAlert2', 'Novo código enviado com sucesso para seu e-mail!', 'success');
       startResendCountdown(60);
