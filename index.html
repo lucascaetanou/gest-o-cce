@@ -89,19 +89,21 @@
           </form>
         </div>
 
-        <!-- Etapa 2: Validar Código OTP de 6 Dígitos -->
+        <!-- Etapa 2: Validar Código de Verificação -->
         <div id="stepOtp" class="recovery-step" style="display: none;">
           <div class="modal-icon-header">
             <i class="fas fa-shield-alt"></i>
           </div>
           <h2 class="modal-title">Código de Verificação</h2>
-          <p class="modal-subtitle">Digite o código de 6 dígitos enviado para <br><b id="otpEmailTarget" style="color: var(--text-primary);"></b></p>
+          <p class="modal-subtitle">Digite o código enviado para <br><b id="otpEmailTarget" style="color: var(--text-primary);"></b></p>
           
           <div id="forgotAlert2" class="alert"></div>
           
           <form id="forgotOtpForm">
             <div class="otp-inputs-container">
               <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
               <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
               <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
               <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>

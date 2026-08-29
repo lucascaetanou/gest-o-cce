@@ -424,11 +424,13 @@ if (otpDigits.length > 0) {
     input.addEventListener('paste', (e) => {
       e.preventDefault();
       const pasteData = (e.clipboardData || window.clipboardData).getData('text').trim();
-      if (/^\d{6}$/.test(pasteData)) {
+      if (/^\d{6,8}$/.test(pasteData)) {
+        otpDigits.forEach(d => d.value = '');
         pasteData.split('').forEach((char, i) => {
           if (otpDigits[i]) otpDigits[i].value = char;
         });
-        otpDigits[5].focus();
+        const lastIdx = Math.min(pasteData.length - 1, otpDigits.length - 1);
+        if (otpDigits[lastIdx]) otpDigits[lastIdx].focus();
       }
     });
   });
@@ -472,8 +474,8 @@ if (forgotOtpForm) {
     }
 
     const otpCode = Array.from(otpDigits).map(i => i.value.trim()).join('');
-    if (otpCode.length !== 6) {
-      showModalAlert('forgotAlert2', 'Por favor, digite todos os 6 dígitos do código.', 'error');
+    if (otpCode.length < 6) {
+      showModalAlert('forgotAlert2', 'Por favor, digite o código de verificação completo.', 'error');
       return;
     }
 
