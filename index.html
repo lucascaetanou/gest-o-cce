@@ -19,7 +19,7 @@
     
     <div class="auth-card">
       <div class="auth-logo-wrapper">
-        <img src="assets/logo.png?v=6"logo.png\';" alt="Gestão CCE" class="auth-logo-img">
+        <img src="assets/logo.png?v=6" alt="Gestão CCE" class="auth-logo-img">
       </div>
       <h1 class="auth-title">Gestão CCE</h1>
       <p class="auth-subtitle">Centro de Ciências Exatas</p>
@@ -35,7 +35,10 @@
           </div>
         </div>
         <div class="form-group">
-          <label for="password">Senha</label>
+          <div class="form-label-row">
+            <label for="password">Senha</label>
+            <button type="button" id="btnOpenForgotModal" class="forgot-password-link">Esqueceu a senha?</button>
+          </div>
           <div class="input-wrapper">
             <i class="fas fa-lock"></i>
             <input type="password" id="password" name="password" required placeholder="••••••••">
@@ -47,19 +50,136 @@
         </button>
       </form>
       
-            <p class="auth-link">Não possui conta? <a href="register.html">Cadastre-se</a></p>
+      <p class="auth-link">Não possui conta? <a href="register.html">Cadastre-se</a></p>
       <div style="text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
-        <a href="https://www.gov.br/saude/pt-br/composicao/sgtes/mais-medicos/painel" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: color 0.2s;"var(--accent-secondary)'"var(--text-muted)'">
+        <a href="https://www.gov.br/saude/pt-br/composicao/sgtes/mais-medicos/painel" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: color 0.2s;">
           <i class="fas fa-external-link-alt" style="font-size: 0.75rem; color: var(--accent-secondary);"></i>
           <span>Painel Oficial Mais Médicos (GOV)</span>
         </a>
+      </div>
+    </div>
+
+    <!-- Modal de Recuperação de Senha Multi-etapas -->
+    <div id="forgotPasswordModal" class="modal-backdrop" style="display: none;" aria-hidden="true">
+      <div class="modal-dialog auth-modal-card">
+        <button type="button" class="modal-close-btn" id="btnCloseForgotModal" aria-label="Fechar">&times;</button>
+        
+        <!-- Etapa 1: Solicitar E-mail -->
+        <div id="stepEmail" class="recovery-step active">
+          <div class="modal-icon-header">
+            <i class="fas fa-key"></i>
+          </div>
+          <h2 class="modal-title">Recuperar Senha</h2>
+          <p class="modal-subtitle">Informe o seu e-mail cadastrado para enviarmos o código de segurança.</p>
+          
+          <div id="forgotAlert1" class="alert"></div>
+          
+          <form id="forgotEmailForm">
+            <div class="form-group">
+              <label for="forgotEmail">E-mail Cadastrado</label>
+              <div class="input-wrapper">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="forgotEmail" required placeholder="seu@email.com">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="btnSendOtp">
+              <span>Enviar Código</span>
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Etapa 2: Validar Código OTP de 6 Dígitos -->
+        <div id="stepOtp" class="recovery-step" style="display: none;">
+          <div class="modal-icon-header">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <h2 class="modal-title">Código de Verificação</h2>
+          <p class="modal-subtitle">Digite o código de 6 dígitos enviado para <br><b id="otpEmailTarget" style="color: var(--text-primary);"></b></p>
+          
+          <div id="forgotAlert2" class="alert"></div>
+          
+          <form id="forgotOtpForm">
+            <div class="otp-inputs-container">
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
+              <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required>
+            </div>
+            
+            <div class="resend-otp-wrapper">
+              <span id="resendTimerText">Reenviar código em <span id="resendCountdown">60</span>s</span>
+              <button type="button" id="btnResendOtp" class="btn-link" style="display: none;">Reenviar código</button>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="btnVerifyOtp">
+              <span>Verificar Código</span>
+              <i class="fas fa-check"></i>
+            </button>
+            
+            <button type="button" class="btn-link btn-back-step" id="btnBackToEmail">
+              <i class="fas fa-arrow-left"></i> Voltar e alterar e-mail
+            </button>
+          </form>
+        </div>
+
+        <!-- Etapa 3: Criar Nova Senha -->
+        <div id="stepNewPassword" class="recovery-step" style="display: none;">
+          <div class="modal-icon-header">
+            <i class="fas fa-lock"></i>
+          </div>
+          <h2 class="modal-title">Nova Senha</h2>
+          <p class="modal-subtitle">Crie uma nova senha segura para acessar sua conta.</p>
+          
+          <div id="forgotAlert3" class="alert"></div>
+          
+          <form id="forgotNewPasswordForm">
+            <div class="form-group">
+              <label for="newPassword">Nova Senha</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="newPassword" required placeholder="Mínimo 6 caracteres">
+              </div>
+              <div class="password-strength" id="resetPasswordStrength">
+                <div class="bar"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="confirmNewPassword">Confirmar Nova Senha</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="confirmNewPassword" required placeholder="Repita a nova senha">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="btnSaveNewPassword">
+              <span>Salvar Nova Senha</span>
+              <i class="fas fa-save"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Sucesso -->
+        <div id="stepSuccess" class="recovery-step" style="display: none; text-align: center;">
+          <div class="modal-icon-header success">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h2 class="modal-title">Senha Redefinida!</h2>
+          <p class="modal-subtitle">Sua senha foi alterada com sucesso. Você já pode fazer login normalmente.</p>
+          <button type="button" class="btn btn-primary btn-full" id="btnFinishRecovery">
+            <span>Ir para o Login</span>
+            <i class="fas fa-sign-in-alt"></i>
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
   
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/auth.js?v=25"></script>
+  <script src="js/auth.js?v=26"></script>
   <script src="js/magic-bento.js?v=2"></script>
 </body>
 </html>

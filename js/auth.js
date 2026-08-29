@@ -216,3 +216,342 @@ if (registerForm) {
     }
   });
 }
+
+// ============================================
+// Módulo de Recuperação de Senha (OTP 6 Dígitos)
+// ============================================
+const forgotModal = document.getElementById('forgotPasswordModal');
+const btnOpenForgot = document.getElementById('btnOpenForgotModal');
+const btnCloseForgot = document.getElementById('btnCloseForgotModal');
+const forgotEmailForm = document.getElementById('forgotEmailForm');
+const forgotOtpForm = document.getElementById('forgotOtpForm');
+const forgotNewPassForm = document.getElementById('forgotNewPasswordForm');
+const btnFinishRecovery = document.getElementById('btnFinishRecovery');
+const btnBackToEmail = document.getElementById('btnBackToEmail');
+const btnResendOtp = document.getElementById('btnResendOtp');
+const otpDigits = document.querySelectorAll('.otp-digit');
+
+let recoveryEmailState = '';
+let resendInterval = null;
+
+// Helpers de alerta do modal
+function showModalAlert(alertId, message, type = 'error') {
+  const el = document.getElementById(alertId);
+  if (el) {
+    el.textContent = message;
+    el.className = `alert ${type}`;
+    el.style.display = 'block';
+  }
+}
+
+function hideModalAlert(alertId) {
+  const el = document.getElementById(alertId);
+  if (el) {
+    el.style.display = 'none';
+    el.textContent = '';
+  }
+}
+
+function switchRecoveryStep(stepId) {
+  const steps = ['stepEmail', 'stepOtp', 'stepNewPassword', 'stepSuccess'];
+  steps.forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.style.display = (s === stepId) ? 'block' : 'none';
+  });
+  ['forgotAlert1', 'forgotAlert2', 'forgotAlert3'].forEach(hideModalAlert);
+}
+
+function startResendCountdown(seconds = 60) {
+  if (resendInterval) clearInterval(resendInterval);
+  let count = seconds;
+  const timerText = document.getElementById('resendTimerText');
+  const countdownEl = document.getElementById('resendCountdown');
+  if (btnResendOtp) btnResendOtp.style.display = 'none';
+  if (timerText) timerText.style.display = 'inline';
+  if (countdownEl) countdownEl.textContent = count;
+
+  resendInterval = setInterval(() => {
+    count--;
+    if (countdownEl) countdownEl.textContent = count;
+    if (count <= 0) {
+      clearInterval(resendInterval);
+      if (timerText) timerText.style.display = 'none';
+      if (btnResendOtp) btnResendOtp.style.display = 'inline';
+    }
+  }, 1000);
+}
+
+// Abrir e Fechar Modal
+if (btnOpenForgot && forgotModal) {
+  btnOpenForgot.addEventListener('click', (e) => {
+    e.preventDefault();
+    forgotModal.style.display = 'flex';
+    forgotModal.setAttribute('aria-hidden', 'false');
+    switchRecoveryStep('stepEmail');
+    if (forgotEmailForm) forgotEmailForm.reset();
+    if (forgotOtpForm) forgotOtpForm.reset();
+    if (forgotNewPassForm) forgotNewPassForm.reset();
+    const emailInput = document.getElementById('forgotEmail');
+    if (emailInput) setTimeout(() => emailInput.focus(), 100);
+  });
+}
+
+function closeModal() {
+  if (forgotModal) {
+    forgotModal.style.display = 'none';
+    forgotModal.setAttribute('aria-hidden', 'true');
+    if (resendInterval) clearInterval(resendInterval);
+  }
+}
+
+if (btnCloseForgot) btnCloseForgot.addEventListener('click', closeModal);
+if (btnFinishRecovery) btnFinishRecovery.addEventListener('click', () => {
+  closeModal();
+  const mainEmail = document.getElementById('email');
+  if (mainEmail) {
+    mainEmail.value = recoveryEmailState;
+    document.getElementById('password')?.focus();
+  }
+});
+
+// Fechar ao clicar fora do card
+if (forgotModal) {
+  forgotModal.addEventListener('click', (e) => {
+    if (e.target === forgotModal) closeModal();
+  });
+}
+
+// Etapa 1: Enviar Código OTP para o E-mail
+if (forgotEmailForm) {
+  forgotEmailForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabaseClient) {
+      showModalAlert('forgotAlert1', 'Serviço de autenticação indisponível.', 'error');
+      return;
+    }
+
+    const email = document.getElementById('forgotEmail').value.trim().toLowerCase();
+    const btn = document.getElementById('btnSendOtp');
+    const btnSpan = btn ? btn.querySelector('span') : null;
+    const origText = btnSpan ? btnSpan.textContent : 'Enviar Código';
+
+    if (btnSpan) btnSpan.textContent = 'Enviando...';
+    if (btn) btn.disabled = true;
+    hideModalAlert('forgotAlert1');
+
+    try {
+      recoveryEmailState = email;
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+
+      const targetEl = document.getElementById('otpEmailTarget');
+      if (targetEl) targetEl.textContent = email;
+
+      switchRecoveryStep('stepOtp');
+      startResendCountdown(60);
+      
+      if (otpDigits.length > 0) {
+        otpDigits.forEach(input => input.value = '');
+        setTimeout(() => otpDigits[0].focus(), 100);
+      }
+    } catch (err) {
+      showModalAlert('forgotAlert1', err.message || 'Erro ao enviar o código de verificação. Verifique o e-mail informado.', 'error');
+    } finally {
+      if (btnSpan) btnSpan.textContent = origText;
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
+// Gerenciamento de digitação e navegação dos inputs OTP (6 dígitos)
+if (otpDigits.length > 0) {
+  otpDigits.forEach((input, idx) => {
+    input.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (val.length >= 1) {
+        e.target.value = val.slice(-1); // Apenas 1 caractere
+        if (idx < otpDigits.length - 1) {
+          otpDigits[idx + 1].focus();
+        }
+      }
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        otpDigits[idx - 1].focus();
+      }
+    });
+
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData('text').trim();
+      if (/^\d{6}$/.test(pasteData)) {
+        pasteData.split('').forEach((char, i) => {
+          if (otpDigits[i]) otpDigits[i].value = char;
+        });
+        otpDigits[5].focus();
+      }
+    });
+  });
+}
+
+// Reenviar Código OTP
+if (btnResendOtp) {
+  btnResendOtp.addEventListener('click', async () => {
+    if (!recoveryEmailState || !supabaseClient) return;
+    try {
+      btnResendOtp.disabled = true;
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(recoveryEmailState);
+      if (error) throw error;
+      showModalAlert('forgotAlert2', 'Novo código enviado com sucesso para seu e-mail!', 'success');
+      startResendCountdown(60);
+    } catch (err) {
+      showModalAlert('forgotAlert2', 'Erro ao reenviar o código. Tente novamente.', 'error');
+    } finally {
+      btnResendOtp.disabled = false;
+    }
+  });
+}
+
+// Voltar para a Etapa 1
+if (btnBackToEmail) {
+  btnBackToEmail.addEventListener('click', () => {
+    switchRecoveryStep('stepEmail');
+    if (resendInterval) clearInterval(resendInterval);
+  });
+}
+
+// Etapa 2: Validar Código OTP e Conferir Status do Usuário
+if (forgotOtpForm) {
+  forgotOtpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabaseClient) {
+      showModalAlert('forgotAlert2', 'Serviço indisponível.', 'error');
+      return;
+    }
+
+    const otpCode = Array.from(otpDigits).map(i => i.value.trim()).join('');
+    if (otpCode.length !== 6) {
+      showModalAlert('forgotAlert2', 'Por favor, digite todos os 6 dígitos do código.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btnVerifyOtp');
+    const btnSpan = btn ? btn.querySelector('span') : null;
+    const origText = btnSpan ? btnSpan.textContent : 'Verificar Código';
+
+    if (btnSpan) btnSpan.textContent = 'Verificando...';
+    if (btn) btn.disabled = true;
+    hideModalAlert('forgotAlert2');
+
+    try {
+      const { data, error } = await supabaseClient.auth.verifyOtp({
+        email: recoveryEmailState,
+        token: otpCode,
+        type: 'recovery'
+      });
+
+      if (error) {
+        throw new Error('Código de verificação inválido ou expirado.');
+      }
+
+      // Verificação de segurança: checar se a conta está ativa/aprovada
+      if (data?.user) {
+        const { data: profile, error: profileErr } = await supabaseClient
+          .from('profiles')
+          .select('role, status')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile && profile.role !== 'ADMIN' && profile.status !== 'APPROVED') {
+          await supabaseClient.auth.signOut();
+          throw new Error('Sua conta ainda não foi aprovada pelo administrador ou está inativa.');
+        }
+      }
+
+      // Avança para a criação da nova senha
+      switchRecoveryStep('stepNewPassword');
+      const newPassInput = document.getElementById('newPassword');
+      if (newPassInput) setTimeout(() => newPassInput.focus(), 100);
+
+    } catch (err) {
+      showModalAlert('forgotAlert2', err.message || 'Código inválido. Tente novamente.', 'error');
+    } finally {
+      if (btnSpan) btnSpan.textContent = origText;
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
+// Medidor de força da nova senha na recuperação
+const resetPassInput = document.getElementById('newPassword');
+const resetStrengthEl = document.getElementById('resetPasswordStrength');
+if (resetPassInput && resetStrengthEl) {
+  const bar = resetStrengthEl.querySelector('.bar');
+  resetPassInput.addEventListener('input', () => {
+    const val = resetPassInput.value;
+    let strength = 0;
+    if (val.length >= 6) strength += 25;
+    if (val.length >= 10) strength += 25;
+    if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength += 25;
+    if (/[0-9!@#$%^&*]/.test(val)) strength += 25;
+    
+    if (bar) {
+      bar.style.width = strength + '%';
+      if (strength <= 25) bar.style.background = '#ef4444';
+      else if (strength <= 50) bar.style.background = '#f59e0b';
+      else if (strength <= 75) bar.style.background = '#3b82f6';
+      else bar.style.background = '#10b981';
+    }
+  });
+}
+
+// Etapa 3: Salvar Nova Senha
+if (forgotNewPassForm) {
+  forgotNewPassForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!supabaseClient) {
+      showModalAlert('forgotAlert3', 'Serviço indisponível.', 'error');
+      return;
+    }
+
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmNewPassword').value;
+    const btn = document.getElementById('btnSaveNewPassword');
+    const btnSpan = btn ? btn.querySelector('span') : null;
+    const origText = btnSpan ? btnSpan.textContent : 'Salvar Nova Senha';
+
+    if (newPassword.length < 6) {
+      showModalAlert('forgotAlert3', 'A senha deve conter no mínimo 6 caracteres.', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showModalAlert('forgotAlert3', 'As senhas informadas não coincidem.', 'error');
+      return;
+    }
+
+    if (btnSpan) btnSpan.textContent = 'Salvando...';
+    if (btn) btn.disabled = true;
+    hideModalAlert('forgotAlert3');
+
+    try {
+      const { error } = await supabaseClient.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      // Desloga da sessão de recuperação para exigir login com a nova senha
+      await supabaseClient.auth.signOut();
+
+      switchRecoveryStep('stepSuccess');
+
+    } catch (err) {
+      showModalAlert('forgotAlert3', err.message || 'Erro ao redefinir a senha. Tente novamente.', 'error');
+    } finally {
+      if (btnSpan) btnSpan.textContent = origText;
+      if (btn) btn.disabled = false;
+    }
+  });
+}
