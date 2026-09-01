@@ -133,8 +133,8 @@ function populateMedicoFilters(data) {
       }
     });
     const sorted = Array.from(eixos).sort();
-    selectEixo.innerHTML = '<option value="" style="background: #1e293b; color: #fff;">Todos os Eixos</option>' +
-      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #1e293b; color: #fff;">${escapeHTML(v)}</option>`).join('');
+    selectEixo.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todos os Eixos</option>' +
+      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
     if (currentVal && eixos.has(currentVal)) selectEixo.value = currentVal;
   }
 
@@ -148,8 +148,8 @@ function populateMedicoFilters(data) {
       }
     });
     const sorted = Array.from(gestoes).sort();
-    selectGestao.innerHTML = '<option value="" style="background: #1e293b; color: #fff;">Todas as Gestões</option>' +
-      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #1e293b; color: #fff;">${escapeHTML(v)}</option>`).join('');
+    selectGestao.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Gestões</option>' +
+      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
     if (currentVal && gestoes.has(currentVal)) selectGestao.value = currentVal;
   }
 }
