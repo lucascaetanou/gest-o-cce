@@ -92,11 +92,11 @@ body {
   50% { transform: translateY(-20px); } 
 }
 
-.fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
+.fade-in { animation: fadeIn 0.4s ease-out; opacity: 1; }
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
 
 /* Buttons */
 .btn {
@@ -770,7 +770,8 @@ body {
 
 /* Sections */
 .section { display: none; }
-.section.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+.section.active { display: block; animation: fadeIn 0.3s ease-out; }
+.section.active .fade-in { opacity: 1; }
 
 /* Stats Grid */
 .stats-grid {

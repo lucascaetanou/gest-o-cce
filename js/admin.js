@@ -64,8 +64,11 @@ function navigateToRoute(routeKey, updateHistory = true) {
 function onSectionActivated(routeKey) {
   switch (routeKey) {
     case 'dashboard':
-      // Se os dados dos médicos já foram carregados, re-renderizar métricas e forçar resize dos gráficos
-      if (typeof window.renderDashboardWithCurrentFilter === 'function') {
+      if (!window.dashboardAllDoctors || window.dashboardAllDoctors.length === 0) {
+        if (typeof window.loadDashboardStats === 'function') {
+          window.loadDashboardStats();
+        }
+      } else if (typeof window.renderDashboardWithCurrentFilter === 'function') {
         window.renderDashboardWithCurrentFilter();
       }
       // Reajuste de tamanho dos gráficos no canvas após o display: block
@@ -74,7 +77,7 @@ function onSectionActivated(routeKey) {
           window.resizeDashboardCharts();
         }
         window.dispatchEvent(new Event('resize'));
-      }, 50);
+      }, 60);
       break;
 
     case 'medicos':
