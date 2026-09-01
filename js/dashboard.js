@@ -5,6 +5,7 @@
 
 window.dashboardAllDoctors = [];
 window.dashboardReferencias = [];
+window.dashboardProcessos = [];
 window.dashboardSelectedRegion = 'TODAS';
 
 // Instâncias dos gráficos
@@ -27,6 +28,14 @@ async function loadDashboardStats() {
         .from('referencias_regionalizadas')
         .select('*');
       window.dashboardReferencias = referencias || [];
+    }
+
+    if (window.dashboardProcessos.length === 0) {
+      const { data: processos, error: processosError } = await supabaseClient
+        .from('processos_administrativos')
+        .select('id,municipio,tipo_demanda,descricao_demanda,interessado,status_processo,equipe_responsavel,data_recebimento,data_ultima_movimentacao,created_at');
+      if (processosError) throw processosError;
+      window.dashboardProcessos = processos || [];
     }
 
     // Configurar listener do filtro de região
@@ -188,7 +197,132 @@ function renderDashboardWithCurrentFilter() {
 
   // 4. Gráfico Tipo Profissional
   updateTipoProfissionalChart(filteredDoctors);
+
+  // 5. Panorama de processos administrativos
+  renderProcessInsights();
 }
+
+function getProcessDemandType(processo) {
+  const explicitType = (processo.tipo_demanda || '').trim().toUpperCase();
+  if (explicitType && explicitType !== 'OUTROS') return explicitType;
+
+  const text = normStr(`${processo.descricao_demanda || ''} ${processo.interessado || ''}`);
+  const categories = [
+    ['DESLIGAMENTO', ['deslig', 'descredenc', 'encerramento de vinculo']],
+    ['TRANSFERÊNCIA', ['transfer', 'remanej', 'mudanca de municipio']],
+    ['AFASTAMENTO', ['afast', 'licenca', 'licenciamento']],
+    ['PAGAMENTO', ['pagament', 'bolsa', 'financeir', 'ressarcimento']],
+    ['LOTAÇÃO', ['lotacao', 'alocacao', 'provimento', 'vaga']],
+    ['DOCUMENTAÇÃO', ['document', 'certidao', 'declaracao', 'cadastro']],
+    ['SUBSTITUIÇÃO', ['substitu', 'reposicao']],
+    ['SOLICITAÇÃO MUNICIPAL', ['prefeitura', 'secretaria municipal', 'solicitacao municipal']]
+  ];
+  const inferred = categories.find(([, keywords]) => keywords.some(keyword => text.includes(keyword)));
+  return inferred ? inferred[0] : (explicitType || 'OUTROS');
+}
+
+function processMatchesDashboardRegion(processo, selectedRegion, cityToMacroMap) {
+  if (!selectedRegion || selectedRegion === 'TODAS') return true;
+  const city = normStr(processo.municipio || '');
+  const macro = cityToMacroMap[city] || '';
+  return referenceMatchesRegion({ macro_regiao: macro, municipio_dsei: processo.municipio || '' }, selectedRegion);
+}
+
+function isClosedProcess(processo) {
+  const status = normStr(processo.status_processo || '');
+  return status.includes('concluido') || status.includes('arquivado');
+}
+
+function isStaleProcess(processo) {
+  if (isClosedProcess(processo)) return false;
+  const rawDate = processo.data_ultima_movimentacao || processo.data_recebimento || processo.created_at;
+  if (!rawDate) return true;
+  const date = new Date(rawDate);
+  if (Number.isNaN(date.getTime())) return true;
+  return (Date.now() - date.getTime()) / 86400000 > 30;
+}
+
+function updateProcessMetric(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function renderProcessRanking(containerId, entries, total, filterType) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="process-ranking-empty">Nenhum processo nesta região.</div>';
+    return;
+  }
+
+  const max = entries[0][1] || 1;
+  entries.forEach(([label, count]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'process-ranking-row';
+    button.title = `Ver processos: ${label}`;
+    button.innerHTML = `
+      <span class="process-ranking-name">${escapeHTML(label)}</span>
+      <span class="process-ranking-track"><span class="process-ranking-fill" style="width:${Math.max(7, (count / max) * 100)}%"></span></span>
+      <span class="process-ranking-value">${count}</span>
+    `;
+    button.addEventListener('click', () => window.openProcessosFilter(filterType, label));
+    container.appendChild(button);
+  });
+}
+
+function renderProcessInsights() {
+  const selectedRegion = window.dashboardSelectedRegion;
+  const cityToMacroMap = getCityToMacroMap();
+  const all = window.dashboardProcessos || [];
+  const processos = all.filter(p => processMatchesDashboardRegion(p, selectedRegion, cityToMacroMap));
+  const open = processos.filter(p => !isClosedProcess(p));
+  const analysis = processos.filter(p => normStr(p.status_processo || '').includes('analise'));
+  const stale = processos.filter(isStaleProcess);
+  const concluded = processos.filter(isClosedProcess);
+  const cities = new Set(processos.map(p => (p.municipio || '').trim()).filter(Boolean));
+  const completionRate = processos.length ? Math.round((concluded.length / processos.length) * 100) : 0;
+
+  updateProcessMetric('dashProcTotal', processos.length.toLocaleString('pt-BR'));
+  updateProcessMetric('dashProcAbertos', open.length.toLocaleString('pt-BR'));
+  updateProcessMetric('dashProcAnalise', analysis.length.toLocaleString('pt-BR'));
+  updateProcessMetric('dashProcParados', stale.length.toLocaleString('pt-BR'));
+  updateProcessMetric('dashProcMunicipios', cities.size.toLocaleString('pt-BR'));
+  updateProcessMetric('dashProcConclusao', `${completionRate}%`);
+  updateProcessMetric('dashDemandTotal', `${processos.length.toLocaleString('pt-BR')} classificadas`);
+  const mapSummary = document.getElementById('mapProcessSummary');
+  if (mapSummary) mapSummary.textContent = `• ${processos.length.toLocaleString('pt-BR')} processos na seleção`;
+
+  const demandMap = {};
+  const cityMap = {};
+  processos.forEach(p => {
+    const demand = getProcessDemandType(p);
+    const city = (p.municipio || 'NÃO INFORMADO').trim().toUpperCase();
+    demandMap[demand] = (demandMap[demand] || 0) + 1;
+    cityMap[city] = (cityMap[city] || 0) + 1;
+  });
+
+  const topDemands = Object.entries(demandMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const topCities = Object.entries(cityMap).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 6);
+  renderProcessRanking('dashboardDemandRanking', topDemands, processos.length, 'demanda');
+  renderProcessRanking('dashboardCityRanking', topCities, processos.length, 'municipio');
+}
+
+window.openProcessosFilter = function(filterType, value) {
+  document.getElementById('navProcessos')?.click();
+  window.setTimeout(() => {
+    if (filterType === 'municipio') {
+      const cityInput = document.getElementById('filterProcMunicipio');
+      if (cityInput) cityInput.value = value;
+    } else {
+      const searchInput = document.getElementById('searchProcesso');
+      if (searchInput) searchInput.value = value;
+    }
+    if (typeof filterProcessos === 'function') filterProcessos();
+  }, 120);
+};
 
 function renderAlertasList() {
   const container = document.getElementById('alertasList');
@@ -484,6 +618,8 @@ function updateTipoProfissionalChart(doctors) {
 
 // Exportações Globais e Redimensionamento Seguro para SPA Mobile
 window.renderDashboardWithCurrentFilter = renderDashboardWithCurrentFilter;
+window.renderProcessInsights = renderProcessInsights;
+window.getProcessDemandType = getProcessDemandType;
 window.loadDashboardStats = loadDashboardStats;
 window.resizeDashboardCharts = function() {
   if (chartRegiao) {
