@@ -198,6 +198,32 @@ function showRegionReport(macroRegiao, responsavel) {
   
   const taxa = totalVagas > 0 ? ((ocupadas / totalVagas) * 100).toFixed(0) : 0;
   const emProcesso = Math.max(0, totalVagas - ocupadas - desocupadas);
+
+  // Processos administrativos vinculados aos municípios desta macrorregião
+  const regionCities = new Set(regionData.map(r => normStr(r.municipio_dsei || '')).filter(Boolean));
+  const regionProcesses = (window.dashboardProcessos || []).filter(p => regionCities.has(normStr(p.municipio || '')));
+  const openProcesses = regionProcesses.filter(p => {
+    const status = normStr(p.status_processo || '');
+    return !status.includes('concluido') && !status.includes('arquivado');
+  });
+  const staleProcesses = openProcesses.filter(p => {
+    const rawDate = p.data_ultima_movimentacao || p.data_recebimento || p.created_at;
+    if (!rawDate) return true;
+    const date = new Date(rawDate);
+    return Number.isNaN(date.getTime()) || (Date.now() - date.getTime()) / 86400000 > 30;
+  });
+  const demandCounts = {};
+  const cityProcessCounts = {};
+  regionProcesses.forEach(p => {
+    const demand = typeof window.getProcessDemandType === 'function'
+      ? window.getProcessDemandType(p)
+      : (p.tipo_demanda || 'OUTROS');
+    const city = (p.municipio || 'NÃO INFORMADO').trim().toUpperCase();
+    demandCounts[demand] = (demandCounts[demand] || 0) + 1;
+    cityProcessCounts[city] = (cityProcessCounts[city] || 0) + 1;
+  });
+  const topRegionDemands = Object.entries(demandCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const topRegionCities = Object.entries(cityProcessCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
   
   // Color based on responsible
   let accentColor = '#7c3aed';
@@ -267,6 +293,26 @@ function showRegionReport(macroRegiao, responsavel) {
         </div>
         ` : ''}
       </div>
+
+      <div class="report-processes">
+        <h4><i class="fas fa-folder-tree" style="color:var(--accent-primary)"></i> Processos Administrativos</h4>
+        <div class="report-process-summary">
+          <div><strong>${regionProcesses.length}</strong><span>Total</span></div>
+          <div><strong style="color:var(--accent-warning)">${openProcesses.length}</strong><span>Em aberto</span></div>
+          <div><strong style="color:var(--accent-danger)">${staleProcesses.length}</strong><span>Parados +30d</span></div>
+        </div>
+        ${topRegionDemands.length ? `
+          <div class="report-process-ranking">
+            ${topRegionDemands.map(([label, count]) => `<div class="report-process-row"><span>${escapeHTML(label)}</span><strong>${count}</strong></div>`).join('')}
+          </div>
+        ` : '<div class="process-ranking-empty">Nenhum processo vinculado à região.</div>'}
+        ${topRegionCities.length ? `
+          <div style="margin-top:0.85rem; color:var(--text-muted); font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Cidades com mais processos</div>
+          <div class="report-process-ranking">
+            ${topRegionCities.map(([city, count]) => `<button type="button" class="report-process-row report-process-city" onclick="window.openProcessosFilter?.('municipio', decodeURIComponent('${encodeURIComponent(city)}'))"><span>${escapeHTML(city)}</span><strong>${count}</strong></button>`).join('')}
+          </div>
+        ` : ''}
+      </div>
       
       <div class="report-municipios">
         <h4><i class="fas fa-city" style="margin-right:0.5rem"></i>Municípios (${municipios.length})</h4>
@@ -316,5 +362,4 @@ window.exportRegionCSV = function(macroRegiao) {
   const safeName = macroRegiao.toLowerCase().replace(/[^a-z0-9]/g, '_');
   downloadCSV(csvString, `relatorio_regiao_${safeName}.csv`);
 };
-
 
