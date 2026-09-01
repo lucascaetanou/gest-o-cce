@@ -160,7 +160,7 @@ function updateProcStatusChart(statusMap) {
     '#ef4444', // Red (Sobrestado)
     '#10b981', // Emerald (Concluído)
     '#3b82f6', // Blue (Em Andamento)
-    '#8b5cf6', // Violet
+    '#14b8a6', // Teal
     '#64748b'  // Slate
   ];
 
@@ -200,7 +200,7 @@ function updateProcInteressadosChart(medicosCount, orgaosCount) {
 
   const labels = ['Médicos / Profissionais', 'Órgãos Públicos / Secretarias'];
   const values = [medicosCount, orgaosCount];
-  const colors = ['#3b82f6', '#8b5cf6'];
+  const colors = ['#2389c7', '#14b8a6'];
 
   if (chartProcInteressados) {
     chartProcInteressados.data.datasets[0].data = values;
@@ -411,8 +411,8 @@ function populateEquipesFilter(data) {
   });
 
   const sortedEquipes = Array.from(equipes).sort();
-  select.innerHTML = '<option value="" style="background: #1e293b; color: #fff;">Todas as Equipes</option>' +
-    sortedEquipes.map(eq => `<option value="${escapeHTML(eq)}" style="background: #1e293b; color: #fff;">${escapeHTML(eq)}</option>`).join('');
+  select.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Equipes</option>' +
+    sortedEquipes.map(eq => `<option value="${escapeHTML(eq)}" style="background: #0b2236; color: #fff;">${escapeHTML(eq)}</option>`).join('');
   
   if (currentVal && equipes.has(currentVal)) {
     select.value = currentVal;
@@ -622,4 +622,3 @@ function exportProcessosExcel(data) {
   URL.revokeObjectURL(link.href);
   showAlert('Exportação realizada com sucesso!', 'success');
 }
-
