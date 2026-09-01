@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .select('role, status')
         .eq('id', session.user.id)
         .single();
-      if (profile && (profile.role === 'ADMIN' || profile.status === 'APPROVED')) {
+      if (profile && profile.status === 'APPROVED') {
         window.location.href = 'admin.html';
       }
     }
@@ -137,7 +137,7 @@ if (loginForm) {
       }
 
       // 3. Route based on role/status
-      if (profile.role === 'ADMIN' || profile.status === 'APPROVED') {
+      if (profile.status === 'APPROVED') {
         showAlert('Login realizado com sucesso!', 'success');
         setTimeout(() => {
           window.location.replace('admin.html');
@@ -506,7 +506,7 @@ if (forgotOtpForm) {
           .eq('id', data.user.id)
           .single();
 
-        if (profile && profile.role !== 'ADMIN' && profile.status !== 'APPROVED') {
+        if (profile && profile.status !== 'APPROVED') {
           await supabaseClient.auth.signOut();
           throw new Error('Sua conta ainda não foi aprovada pelo administrador ou está inativa.');
         }
