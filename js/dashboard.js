@@ -417,7 +417,7 @@ function updateMedicosRegiaoChart(doctors, showAllRegions) {
   if (!ctx) return;
 
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const textColor = isLight ? '#475569' : '#8b8fa3';
+  const textColor = isLight ? '#475569' : '#9bb2b6';
   const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
 
   const dataMap = {};
@@ -439,11 +439,11 @@ function updateMedicosRegiaoChart(doctors, showAllRegions) {
       datasets: [{
         label: 'Médicos Ativos',
         data: data,
-        backgroundColor: isLight ? 'rgba(124, 58, 237, 0.85)' : 'rgba(124, 58, 237, 0.75)',
-        borderColor: '#7c3aed',
+        backgroundColor: isLight ? 'rgba(16, 169, 129, 0.88)' : 'rgba(16, 169, 129, 0.76)',
+        borderColor: '#10a981',
         borderWidth: 1.5,
         borderRadius: 8,
-        hoverBackgroundColor: '#6d28d9'
+        hoverBackgroundColor: '#0e9275'
       }]
     },
     options: {
@@ -463,9 +463,9 @@ function updateMedicosRegiaoChart(doctors, showAllRegions) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(17, 22, 56, 0.95)',
-          titleColor: isLight ? '#0f172a' : '#f0f0ff',
-          bodyColor: isLight ? '#475569' : '#8b8fa3',
+          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(11, 34, 54, 0.96)',
+          titleColor: isLight ? '#0f172a' : '#f3faf8',
+          bodyColor: isLight ? '#475569' : '#9bb2b6',
           borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
           borderWidth: 1,
           cornerRadius: 8,
@@ -486,12 +486,12 @@ function updateTipoProfissionalChart(doctors) {
   if (!ctx || !doctors) return;
 
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const borderColor = isLight ? '#ffffff' : '#111638';
+  const borderColor = isLight ? '#ffffff' : '#0b2236';
 
   // Cores distintas por Eixo da Vaga
   const colorPalette = {
     'VÍNCULO': '#10b981',        // Emerald Green
-    'ESTRATÉGICO': '#8b5cf6',    // Violet / Purple
+    'ESTRATÉGICO': '#14b8a6',    // Teal
     'FORMAÇÃO': '#06b6d4',       // Cyan Blue
     'NÃO INFORMADO': '#64748b',  // Slate Gray
     'OUTROS': '#f59e0b'          // Amber
@@ -552,9 +552,9 @@ function updateTipoProfissionalChart(doctors) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(17, 22, 56, 0.95)',
-          titleColor: isLight ? '#0f172a' : '#f0f0ff',
-          bodyColor: isLight ? '#475569' : '#8b8fa3',
+          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(11, 34, 54, 0.96)',
+          titleColor: isLight ? '#0f172a' : '#f3faf8',
+          bodyColor: isLight ? '#475569' : '#9bb2b6',
           borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
           borderWidth: 1,
           cornerRadius: 8,
