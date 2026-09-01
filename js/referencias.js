@@ -226,7 +226,7 @@ function showRegionReport(macroRegiao, responsavel) {
   const topRegionCities = Object.entries(cityProcessCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
   
   // Color based on responsible
-  let accentColor = '#7c3aed';
+  let accentColor = '#10a981';
   if (responsavel === 'Marcossuel Acioles') accentColor = '#06b6d4';
   else if (responsavel === 'Alyne Cuba') accentColor = '#f59e0b';
   
@@ -283,7 +283,7 @@ function showRegionReport(macroRegiao, responsavel) {
           <span style="font-weight:600">${federal}</span>
         </div>
         <div class="breakdown-row">
-          <span><i class="fas fa-handshake" style="color:#8b5cf6;margin-right:0.5rem"></i>Coparticipação</span>
+          <span><i class="fas fa-handshake" style="color:#14b8a6;margin-right:0.5rem"></i>Coparticipação</span>
           <span style="font-weight:600">${copart}</span>
         </div>
         ${emProcesso > 0 ? `
@@ -362,4 +362,3 @@ window.exportRegionCSV = function(macroRegiao) {
   const safeName = macroRegiao.toLowerCase().replace(/[^a-z0-9]/g, '_');
   downloadCSV(csvString, `relatorio_regiao_${safeName}.csv`);
 };
-
