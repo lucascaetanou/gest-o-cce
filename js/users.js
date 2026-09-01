@@ -3,6 +3,7 @@
 // ============================================
 
 async function loadUsers() {
+  if (!window.currentUserIsAdmin) return;
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
   
@@ -112,14 +113,24 @@ async function loadUsers() {
 
 
 async function updateStatus(userId, newStatus) {
+  if (!window.currentUserIsAdmin) {
+    showAlert('Apenas administradores podem autorizar cadastros.', 'error');
+    return;
+  }
+
+  if (!['APPROVED', 'REJECTED'].includes(newStatus)) {
+    showAlert('Status de cadastro inválido.', 'error');
+    return;
+  }
+
   const action = newStatus === 'APPROVED' ? 'APROVAR' : 'REJEITAR';
   if (!confirm(`Tem certeza que deseja ${action} este usuário?`)) return;
 
   try {
-    const { error } = await supabaseClient
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', userId);
+    const { error } = await supabaseClient.rpc('set_member_status', {
+      target_user_id: userId,
+      new_status: newStatus
+    });
 
     if (error) throw error;
 
