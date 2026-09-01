@@ -8,56 +8,128 @@
   <meta name="description" content="Acesso à plataforma de gestão do Centro de Ciências Exatas">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=25">
+  <link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body>
-  <div class="auth-wrapper">
-    <!-- Decorative floating orbs for depth -->
+  <div class="auth-wrapper auth-experience">
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
-    
-    <div class="auth-card">
-      <div class="auth-logo-wrapper">
-        <img src="assets/logo.png?v=6" alt="Gestão CCE" class="auth-logo-img">
-      </div>
-      <h1 class="auth-title">Gestão CCE</h1>
-      <p class="auth-subtitle">Centro de Ciências Exatas</p>
-      
-      <div id="alertMessage" class="alert"></div>
-      
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="email">E-mail</label>
-          <div class="input-wrapper">
-            <i class="fas fa-envelope"></i>
-            <input type="email" id="email" name="email" required placeholder="seu@email.com">
+
+    <main class="auth-stage" aria-label="Acesso à plataforma Gestão CCE">
+      <div class="auth-shell" id="authShell">
+        <section class="auth-pane auth-pane-login" aria-labelledby="loginTitle">
+          <div class="auth-pane-content">
+            <div class="auth-brand">
+              <img src="assets/logo.png?v=6" alt="" class="auth-brand-logo">
+              <span>Gestão CCE</span>
+            </div>
+            <div class="auth-heading">
+              <span class="auth-eyebrow">Área de membros</span>
+              <h1 id="loginTitle">Bem-vindo de volta</h1>
+              <p>Entre para continuar na plataforma privada da CCE.</p>
+            </div>
+            <div id="loginAlert" class="alert" role="status" aria-live="polite"></div>
+            <form id="loginForm">
+              <div class="form-group">
+                <label for="loginEmail">E-mail</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-envelope" aria-hidden="true"></i>
+                  <input type="email" id="loginEmail" name="email" autocomplete="email" required placeholder="seu@email.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label-row">
+                  <label for="loginPassword">Senha</label>
+                  <button type="button" id="btnOpenForgotModal" class="forgot-password-link">Esqueceu a senha?</button>
+                </div>
+                <div class="input-wrapper">
+                  <i class="fas fa-lock" aria-hidden="true"></i>
+                  <input type="password" id="loginPassword" name="password" autocomplete="current-password" required placeholder="••••••••">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-full auth-submit" id="loginSubmit">
+                <span>Entrar</span><i class="fas fa-arrow-right" aria-hidden="true"></i>
+              </button>
+            </form>
+            <a class="official-panel-link" href="https://www.gov.br/saude/pt-br/composicao/sgtes/mais-medicos/painel" target="_blank" rel="noopener noreferrer">
+              <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+              <span>Painel Oficial Mais Médicos (GOV)</span>
+            </a>
+          </div>
+        </section>
+
+        <section class="auth-pane auth-pane-register" aria-labelledby="registerTitle" aria-hidden="true">
+          <div class="auth-pane-content">
+            <div class="auth-brand">
+              <img src="assets/logo.png?v=6" alt="" class="auth-brand-logo">
+              <span>Gestão CCE</span>
+            </div>
+            <div class="auth-heading auth-heading-compact">
+              <span class="auth-eyebrow">Solicitação de acesso</span>
+              <h2 id="registerTitle">Crie sua conta</h2>
+              <p>Seu cadastro será analisado por um membro aprovado.</p>
+            </div>
+            <div id="registerAlert" class="alert" role="status" aria-live="polite"></div>
+            <form id="registerForm">
+              <div class="form-group">
+                <label for="registerName">Nome completo</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-user" aria-hidden="true"></i>
+                  <input type="text" id="registerName" autocomplete="name" required placeholder="João Silva">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="registerEmail">E-mail</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-envelope" aria-hidden="true"></i>
+                  <input type="email" id="registerEmail" autocomplete="email" required placeholder="seu@email.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="registerPhone">Telefone</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-phone" aria-hidden="true"></i>
+                  <input type="tel" id="registerPhone" autocomplete="tel" required placeholder="(00) 00000-0000">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="registerPassword">Senha</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-lock" aria-hidden="true"></i>
+                  <input type="password" id="registerPassword" autocomplete="new-password" required minlength="8" placeholder="Mínimo 8 caracteres">
+                </div>
+                <div id="passwordStrength" class="password-strength" aria-hidden="true"><div class="bar"></div></div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-full auth-submit" id="registerSubmit">
+                <span>Solicitar acesso</span><i class="fas fa-paper-plane" aria-hidden="true"></i>
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <div class="auth-overlay-wrap">
+          <div class="auth-overlay">
+            <div class="auth-overlay-shape auth-overlay-shape-one"></div>
+            <div class="auth-overlay-shape auth-overlay-shape-two"></div>
+            <div class="auth-overlay-panel auth-overlay-new">
+              <div class="auth-overlay-icon"><i class="fas fa-user-plus"></i></div>
+              <span class="auth-overlay-kicker">Comunidade CCE</span>
+              <h2>Novo por aqui?</h2>
+              <p>Solicite seu acesso e faça parte da nossa plataforma privada de membros.</p>
+              <button type="button" class="auth-overlay-button" id="showRegister">Criar conta <i class="fas fa-arrow-right"></i></button>
+            </div>
+            <div class="auth-overlay-panel auth-overlay-returning">
+              <div class="auth-overlay-icon"><i class="fas fa-right-to-bracket"></i></div>
+              <span class="auth-overlay-kicker">Bem-vindo novamente</span>
+              <h2>Já possui uma conta?</h2>
+              <p>Entre com suas credenciais para continuar acompanhando a gestão CCE.</p>
+              <button type="button" class="auth-overlay-button" id="showLogin">Fazer login <i class="fas fa-arrow-left"></i></button>
+            </div>
           </div>
         </div>
-        <div class="form-group">
-          <div class="form-label-row">
-            <label for="password">Senha</label>
-            <button type="button" id="btnOpenForgotModal" class="forgot-password-link">Esqueceu a senha?</button>
-          </div>
-          <div class="input-wrapper">
-            <i class="fas fa-lock"></i>
-            <input type="password" id="password" name="password" required placeholder="••••••••">
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary btn-full" id="btnSubmit">
-          <span>Entrar</span>
-          <i class="fas fa-arrow-right"></i>
-        </button>
-      </form>
-      
-      <p class="auth-link">Não possui conta? <a href="register.html">Cadastre-se</a></p>
-      <div style="text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border);">
-        <a href="https://www.gov.br/saude/pt-br/composicao/sgtes/mais-medicos/painel" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: color 0.2s;">
-          <i class="fas fa-external-link-alt" style="font-size: 0.75rem; color: var(--accent-secondary);"></i>
-          <span>Painel Oficial Mais Médicos (GOV)</span>
-        </a>
       </div>
-    </div>
+    </main>
 
     <!-- Modal de Recuperação de Senha Multi-etapas -->
     <div id="forgotPasswordModal" class="modal-backdrop" style="display: none;" aria-hidden="true">
@@ -181,7 +253,7 @@
   
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/auth.js?v=27"></script>
-  <script src="js/magic-bento.js?v=2"></script>
+  <script src="js/auth.js?v=28"></script>
+  <script src="js/login-ui.js?v=1"></script>
 </body>
 </html>
