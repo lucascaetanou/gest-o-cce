@@ -18,10 +18,14 @@ const ROUTE_MAP = {
 };
 
 let currentActiveRoute = 'dashboard';
+let currentUserIsAdmin = false;
 
 // Função Universal de Navegação SPA com Histórico do Navegador
 function navigateToRoute(routeKey, updateHistory = true) {
-  const normalizedKey = (routeKey || '').replace(/^#\/?/, '').toLowerCase().trim();
+  let normalizedKey = (routeKey || '').replace(/^#\/?/, '').toLowerCase().trim();
+  if (normalizedKey === 'users' && !currentUserIsAdmin) {
+    normalizedKey = 'dashboard';
+  }
   const config = ROUTE_MAP[normalizedKey] || ROUTE_MAP['dashboard'];
   const actualKey = ROUTE_MAP[normalizedKey] ? normalizedKey : 'dashboard';
 
@@ -115,7 +119,7 @@ function onSectionActivated(routeKey) {
       break;
 
     case 'users':
-      if (typeof loadUsers === 'function') {
+      if (currentUserIsAdmin && typeof loadUsers === 'function') {
         loadUsers();
       }
       break;
@@ -263,14 +267,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       .eq('id', session.user.id)
       .single();
 
-    if (profileError || !profile || (profile.role !== 'ADMIN' && profile.status !== 'APPROVED')) {
-      alert('Acesso Restrito: Sua conta não possui permissão de administrador ou está aguardando aprovação.');
+    if (profileError || !profile || profile.status !== 'APPROVED') {
+      alert('Acesso restrito: sua conta ainda não foi aprovada ou está inativa.');
       await supabaseClient.auth.signOut();
       document.body.innerHTML = '';
       window.location.replace('index.html');
       return;
     }
     currentProfile = profile;
+    currentUserIsAdmin = profile.role === 'ADMIN';
+    window.currentUserIsAdmin = currentUserIsAdmin;
+
+    if (!currentUserIsAdmin) {
+      document.getElementById('navUsers')?.remove();
+      document.getElementById('sectionUsers')?.remove();
+    }
   } catch (err) {
     console.error('Erro de validação de acesso:', err);
     window.location.replace('index.html');
@@ -319,11 +330,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadProcessos();
   setupProcessosLogic();
 
-  loadUsers();
+  if (currentUserIsAdmin) loadUsers();
 
   // Refresh de usuários
   const btnRefreshUsers = document.getElementById('btnRefresh');
-  if (btnRefreshUsers) {
+  if (currentUserIsAdmin && btnRefreshUsers) {
     btnRefreshUsers.addEventListener('click', () => loadUsers());
   }
 });
