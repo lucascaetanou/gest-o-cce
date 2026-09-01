@@ -5,37 +5,155 @@
 // Referência global segura ao cliente Supabase
 var supabaseClient = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
 
-// Configuração de Navegação SPA entre as Seções
+// Mapeamento Central de Rotas SPA
+const ROUTE_MAP = {
+  'dashboard': { navId: 'navDashboard', section: 'sectionDashboard', title: 'Dashboard', subtitle: 'Visão geral do sistema' },
+  'referencias': { navId: 'navReferencias', section: 'sectionReferencias', title: 'Referências Regionais', subtitle: 'Superintendências e regiões de saúde' },
+  'medicos': { navId: 'navMedicos', section: 'sectionMedicos', title: 'Médicos (PMMB)', subtitle: 'Consulta e filtros de profissionais' },
+  'supervisores': { navId: 'navSupervisores', section: 'sectionSupervisores', title: 'Supervisores (PMMB)', subtitle: 'Gerenciamento de Supervisores' },
+  'tutores': { navId: 'navTutores', section: 'sectionTutores', title: 'Tutores (PMMB)', subtitle: 'Gerenciamento de Tutores' },
+  'processos': { navId: 'navProcessos', section: 'sectionProcessos', title: 'Processos Administrativos', subtitle: 'Demandas e Acompanhamento de Processos SEI' },
+  'materiais': { navId: 'navMateriais', section: 'sectionMateriais', title: 'Documentos e Materiais', subtitle: 'Repositório de apoio e normativas' },
+  'users': { navId: 'navUsers', section: 'sectionUsers', title: 'Contas de Acesso', subtitle: 'Gerenciar permissões de usuários' }
+};
+
+let currentActiveRoute = 'dashboard';
+
+// Função Universal de Navegação SPA com Histórico do Navegador
+function navigateToRoute(routeKey, updateHistory = true) {
+  const normalizedKey = (routeKey || '').replace(/^#\/?/, '').toLowerCase().trim();
+  const config = ROUTE_MAP[normalizedKey] || ROUTE_MAP['dashboard'];
+  const actualKey = ROUTE_MAP[normalizedKey] ? normalizedKey : 'dashboard';
+
+  currentActiveRoute = actualKey;
+
+  // 1. Atualizar Abas na Sidebar
+  document.querySelectorAll('.sidebar .nav-item').forEach(item => item.classList.remove('active'));
+  const navEl = document.getElementById(config.navId);
+  if (navEl) navEl.classList.add('active');
+
+  // 2. Alternar Seções Visíveis
+  document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+  const section = document.getElementById(config.section);
+  if (section) section.classList.add('active');
+
+  // 3. Atualizar Título e Subtítulo da Página
+  const pageTitle = document.getElementById('pageTitle');
+  const pageSubtitle = document.getElementById('pageSubtitle');
+  if (pageTitle) pageTitle.textContent = config.title;
+  if (pageSubtitle) pageSubtitle.textContent = config.subtitle;
+
+  // 4. Atualizar Histórico do Navegador (Sem recarregar a página)
+  if (updateHistory) {
+    const targetHash = '#' + actualKey;
+    if (window.location.hash !== targetHash) {
+      window.history.pushState({ route: actualKey }, config.title, targetHash);
+    }
+  }
+
+  // 5. Scroll para o topo ao trocar de aba
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  const mainEl = document.querySelector('.main-content');
+  if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'instant' });
+
+  // 6. Ciclo de Vida da Seção Ativada (Tratamento Mobile e Re-renderização)
+  onSectionActivated(actualKey);
+}
+
+// Hook de Ativação de Seção (Resolve o congelamento de gráficos e tabelas no mobile)
+function onSectionActivated(routeKey) {
+  switch (routeKey) {
+    case 'dashboard':
+      // Se os dados dos médicos já foram carregados, re-renderizar métricas e forçar resize dos gráficos
+      if (typeof window.renderDashboardWithCurrentFilter === 'function') {
+        window.renderDashboardWithCurrentFilter();
+      }
+      // Reajuste de tamanho dos gráficos no canvas após o display: block
+      setTimeout(() => {
+        if (typeof window.resizeDashboardCharts === 'function') {
+          window.resizeDashboardCharts();
+        }
+        window.dispatchEvent(new Event('resize'));
+      }, 50);
+      break;
+
+    case 'medicos':
+      if (typeof filterMedicos === 'function') {
+        filterMedicos();
+      }
+      break;
+
+    case 'referencias':
+      // Se houver mapa ou tabela
+      break;
+
+    case 'supervisores':
+      if (typeof filterSupervisores === 'function') {
+        filterSupervisores();
+      }
+      break;
+
+    case 'tutores':
+      if (typeof filterTutores === 'function') {
+        filterTutores();
+      }
+      break;
+
+    case 'processos':
+      if (typeof filterProcessos === 'function') {
+        filterProcessos();
+      }
+      break;
+
+    case 'materiais':
+      if (typeof filterMateriais === 'function') {
+        filterMateriais();
+      }
+      break;
+
+    case 'users':
+      if (typeof loadUsers === 'function') {
+        loadUsers();
+      }
+      break;
+  }
+}
+
+// Configuração de Navegação e Ouvintes de Histórico
 function setupNavigation() {
-  const navItems = {
-    navDashboard: { section: 'sectionDashboard', title: 'Dashboard', subtitle: 'Visão geral do sistema' },
-    navMedicos: { section: 'sectionMedicos', title: 'Médicos (PMMB)', subtitle: 'Consulta e filtros de profissionais' },
-    navReferencias: { section: 'sectionReferencias', title: 'Referências Regionais', subtitle: 'Superintendências e regiões de saúde' },
-    navSupervisores: { section: 'sectionSupervisores', title: 'Supervisores (PMMB)', subtitle: 'Gerenciamento de Supervisores' },
-    navTutores: { section: 'sectionTutores', title: 'Tutores (PMMB)', subtitle: 'Gerenciamento de Tutores' },
-    navMateriais: { section: 'sectionMateriais', title: 'Documentos e Materiais', subtitle: 'Repositório de apoio e normativas' },
-    navProcessos: { section: 'sectionProcessos', title: 'Processos Administrativos', subtitle: 'Demandas e Acompanhamento de Processos SEI' },
-    navUsers: { section: 'sectionUsers', title: 'Contas de Acesso', subtitle: 'Gerenciar permissões de usuários' }
-  };
-
-  Object.entries(navItems).forEach(([navId, config]) => {
-    const navEl = document.getElementById(navId);
+  // 1. Cliques nos itens do menu
+  Object.entries(ROUTE_MAP).forEach(([routeKey, config]) => {
+    const navEl = document.getElementById(config.navId);
     if (navEl) {
-      navEl.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-        navEl.classList.add('active');
-
-        document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-        const section = document.getElementById(config.section);
-        if (section) section.classList.add('active');
-
-        const pageTitle = document.getElementById('pageTitle');
-        const pageSubtitle = document.getElementById('pageSubtitle');
-        if (pageTitle) pageTitle.textContent = config.title;
-        if (pageSubtitle) pageSubtitle.textContent = config.subtitle;
+      navEl.addEventListener('click', (e) => {
+        e.preventDefault();
+        navigateToRoute(routeKey, true);
       });
     }
   });
+
+  // 2. Ouvinte de Botão Voltar/Avançar do Celular ou Navegador (popstate / hashchange)
+  window.addEventListener('popstate', () => {
+    const currentHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    const route = ROUTE_MAP[currentHash] ? currentHash : 'dashboard';
+    navigateToRoute(route, false);
+  });
+
+  window.addEventListener('hashchange', () => {
+    const currentHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    const route = ROUTE_MAP[currentHash] ? currentHash : 'dashboard';
+    if (route !== currentActiveRoute) {
+      navigateToRoute(route, false);
+    }
+  });
+
+  // 3. Rota Inicial (Deep Linking)
+  const initialHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  const startRoute = ROUTE_MAP[initialHash] ? initialHash : 'dashboard';
+  if (!window.location.hash) {
+    window.history.replaceState({ route: startRoute }, '', '#dashboard');
+  }
+  navigateToRoute(startRoute, false);
 }
 
 // Configuração dos eventos de fechamento de Modais

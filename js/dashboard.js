@@ -481,3 +481,25 @@ function updateTipoProfissionalChart(doctors) {
     });
   }
 }
+
+// Exportações Globais e Redimensionamento Seguro para SPA Mobile
+window.renderDashboardWithCurrentFilter = renderDashboardWithCurrentFilter;
+window.loadDashboardStats = loadDashboardStats;
+window.resizeDashboardCharts = function() {
+  if (chartRegiao) {
+    try {
+      chartRegiao.resize();
+      chartRegiao.update('none');
+    } catch (e) {
+      console.warn('Erro ao redimensionar chartRegiao:', e);
+    }
+  }
+  if (chartTipoProf) {
+    try {
+      chartTipoProf.resize();
+      chartTipoProf.update('none');
+    } catch (e) {
+      console.warn('Erro ao redimensionar chartTipoProf:', e);
+    }
+  }
+};
