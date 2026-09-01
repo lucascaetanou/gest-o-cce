@@ -2463,6 +2463,10 @@ html, body {
   padding: clamp(2rem, 4vw, 3.6rem);
 }
 
+.auth-pane-register .auth-pane-content { padding-block: 2rem; }
+.auth-pane-register .auth-brand { margin-bottom: 1rem; }
+.auth-pane-register .form-group { margin-bottom: 0.8rem; }
+
 .auth-brand {
   display: flex;
   align-items: center;
