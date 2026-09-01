@@ -405,6 +405,13 @@ body {
   text-decoration: underline;
 }
 
+.auth-forgot-below {
+  display: block;
+  width: 100%;
+  margin-top: 0.9rem;
+  text-align: center;
+}
+
 /* Modal Backdrop & Glassmorphic Dialog */
 .modal-backdrop {
   position: fixed;
