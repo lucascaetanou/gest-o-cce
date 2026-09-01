@@ -24,7 +24,11 @@ var supabaseClient = window.supabaseClient;
 
 // --- Utility: Show Alert ---
 function showAlert(message, type = 'error') {
-  const alertEl = document.getElementById('alertMessage');
+  const authShell = document.getElementById('authShell');
+  const activeAlertId = authShell && authShell.classList.contains('show-register')
+    ? 'registerAlert'
+    : 'loginAlert';
+  const alertEl = document.getElementById(activeAlertId) || document.getElementById('alertMessage');
   if (alertEl) {
     alertEl.textContent = message;
     alertEl.className = `alert ${type}`;
@@ -103,9 +107,9 @@ if (loginForm) {
       return;
     }
 
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const btn = document.getElementById('btnSubmit');
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginSubmit');
     const btnSpan = btn.querySelector('span');
     
     // Loading state
@@ -160,7 +164,7 @@ if (loginForm) {
 // --- Register Form Logic (com sanitização e validação anti-injeção) ---
 const registerForm = document.getElementById('registerForm');
 if (registerForm) {
-  const passwordInput = document.getElementById('password');
+  const passwordInput = document.getElementById('registerPassword');
   const strengthContainer = document.getElementById('passwordStrength');
   
   if (passwordInput && strengthContainer) {
@@ -191,11 +195,11 @@ if (registerForm) {
     }
 
     // Sanitização e limpeza de inputs
-    const name = document.getElementById('name').value.trim().replace(/<[^>]*>?/gm, '');
-    const email = document.getElementById('email').value.trim().toLowerCase();
-    const phone = document.getElementById('phone').value.trim().replace(/<[^>]*>?/gm, '');
-    const password = document.getElementById('password').value;
-    const btn = document.getElementById('btnSubmit');
+    const name = document.getElementById('registerName').value.trim().replace(/<[^>]*>?/gm, '');
+    const email = document.getElementById('registerEmail').value.trim().toLowerCase();
+    const phone = document.getElementById('registerPhone').value.trim().replace(/<[^>]*>?/gm, '');
+    const password = document.getElementById('registerPassword').value;
+    const btn = document.getElementById('registerSubmit');
     const btnSpan = btn ? btn.querySelector('span') : null;
 
     // Validação de formato de e-mail
@@ -205,8 +209,8 @@ if (registerForm) {
       return;
     }
 
-    if (password.length < 6) {
-      showAlert('A senha deve conter no mínimo 6 caracteres.', 'error');
+    if (password.length < 8) {
+      showAlert('A senha deve conter no mínimo 8 caracteres.', 'error');
       return;
     }
 
@@ -344,10 +348,10 @@ function closeModal() {
 if (btnCloseForgot) btnCloseForgot.addEventListener('click', closeModal);
 if (btnFinishRecovery) btnFinishRecovery.addEventListener('click', () => {
   closeModal();
-  const mainEmail = document.getElementById('email');
+  const mainEmail = document.getElementById('loginEmail');
   if (mainEmail) {
     mainEmail.value = recoveryEmailState;
-    document.getElementById('password')?.focus();
+    document.getElementById('loginPassword')?.focus();
   }
 });
 
