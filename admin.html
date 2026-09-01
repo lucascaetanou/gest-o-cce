@@ -196,6 +196,68 @@
               </div>
             </div>
           </div>
+
+          <!-- Panorama de Processos Administrativos -->
+          <section class="process-insights fade-in stagger-2" aria-labelledby="processInsightsTitle">
+            <div class="process-insights-header">
+              <div>
+                <span class="section-kicker">Gestão administrativa</span>
+                <h3 id="processInsightsTitle"><i class="fas fa-folder-tree"></i> Panorama de Processos</h3>
+                <p>Visão consolidada das demandas na região selecionada.</p>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('navProcessos')?.click()">
+                Ver todos os processos <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+
+            <div class="process-kpi-grid">
+              <div class="process-kpi process-kpi-blue">
+                <span class="process-kpi-icon"><i class="fas fa-folder-open"></i></span>
+                <div><span id="dashProcTotal">0</span><small>Total</small></div>
+              </div>
+              <div class="process-kpi process-kpi-amber">
+                <span class="process-kpi-icon"><i class="fas fa-spinner"></i></span>
+                <div><span id="dashProcAbertos">0</span><small>Em aberto</small></div>
+              </div>
+              <div class="process-kpi process-kpi-purple">
+                <span class="process-kpi-icon"><i class="fas fa-magnifying-glass"></i></span>
+                <div><span id="dashProcAnalise">0</span><small>Em análise</small></div>
+              </div>
+              <div class="process-kpi process-kpi-red">
+                <span class="process-kpi-icon"><i class="fas fa-calendar-xmark"></i></span>
+                <div><span id="dashProcParados">0</span><small>Sem movimentação +30d</small></div>
+              </div>
+              <div class="process-kpi process-kpi-teal">
+                <span class="process-kpi-icon"><i class="fas fa-city"></i></span>
+                <div><span id="dashProcMunicipios">0</span><small>Municípios</small></div>
+              </div>
+              <div class="process-kpi process-kpi-green">
+                <span class="process-kpi-icon"><i class="fas fa-circle-check"></i></span>
+                <div><span id="dashProcConclusao">0%</span><small>Taxa de conclusão</small></div>
+              </div>
+            </div>
+
+            <div class="process-ranking-grid">
+              <article class="process-ranking-card">
+                <div class="process-ranking-title">
+                  <div><i class="fas fa-list-check"></i><span>Principais demandas</span></div>
+                  <small id="dashDemandTotal">0 classificadas</small>
+                </div>
+                <div id="dashboardDemandRanking" class="process-ranking-list">
+                  <div class="process-ranking-empty">Carregando demandas...</div>
+                </div>
+              </article>
+              <article class="process-ranking-card">
+                <div class="process-ranking-title">
+                  <div><i class="fas fa-ranking-star"></i><span>Cidades com mais processos</span></div>
+                  <small>Top 6</small>
+                </div>
+                <div id="dashboardCityRanking" class="process-ranking-list">
+                  <div class="process-ranking-empty">Carregando municípios...</div>
+                </div>
+              </article>
+            </div>
+          </section>
           
           <!-- Alertas de Desocupação -->
           <div class="alertas-card fade-in stagger-2">
@@ -266,7 +328,7 @@
               <div class="map-card">
                 <div class="map-card-header">
                   <h3><i class="fas fa-map" style="color:var(--accent-secondary);margin-right:0.5rem"></i>Mapa de Regiões de Saúde — Ceará</h3>
-                  <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.25rem">Clique em uma região para ver o relatório detalhado</p>
+                  <p style="font-size:0.85rem;color:var(--text-muted);margin-top:0.25rem">Clique em uma região para ver o relatório detalhado <span id="mapProcessSummary" class="map-process-summary">• 0 processos mapeados</span></p>
                 </div>
                 <div class="map-svg-wrapper">
                   <svg id="ceara-map" viewBox="0 0 550 650" xmlns="http://www.w3.org/2000/svg">
@@ -1029,6 +1091,21 @@
               <input type="text" id="procMunicipio" class="form-input" placeholder="Ex: Fortaleza">
             </div>
             <div class="form-group">
+              <label>Tipo de Demanda</label>
+              <select id="procTipoDemanda" class="form-input" required>
+                <option value="">Selecione...</option>
+                <option value="DESLIGAMENTO">Desligamento</option>
+                <option value="TRANSFERÊNCIA">Transferência</option>
+                <option value="AFASTAMENTO">Afastamento</option>
+                <option value="PAGAMENTO">Pagamento</option>
+                <option value="LOTAÇÃO">Lotação</option>
+                <option value="DOCUMENTAÇÃO">Documentação</option>
+                <option value="SUBSTITUIÇÃO">Substituição</option>
+                <option value="SOLICITAÇÃO MUNICIPAL">Solicitação municipal</option>
+                <option value="OUTROS">Outros</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>Vínculo do Médico com o Programa</label>
               <input type="text" id="procVinculo" class="form-input" placeholder="Ex: PMMB">
             </div>
@@ -1076,12 +1153,12 @@
   <!-- Módulos da Aplicação Gestão CCE -->
   <script src="js/utils.js?v=5"></script>
   <script src="js/medicos.js?v=26"></script>
-  <script src="js/dashboard.js?v=26"></script>
-  <script src="js/referencias.js?v=26"></script>
+  <script src="js/dashboard.js?v=27"></script>
+  <script src="js/referencias.js?v=27"></script>
   <script src="js/supervisores.js?v=26"></script>
   <script src="js/tutores.js?v=26"></script>
   <script src="js/materiais.js?v=26"></script>
-  <script src="js/processos.js?v=26"></script>
+  <script src="js/processos.js?v=27"></script>
   <script src="js/users.js?v=27"></script>
 
   <!-- Orquestrador Principal -->
