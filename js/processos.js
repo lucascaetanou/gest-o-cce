@@ -59,9 +59,11 @@ async function loadProcessos() {
 
     if (error) throw error;
     window.processosData = data || [];
+    window.dashboardProcessos = data || [];
     renderProcessosTable(window.processosData);
     updateProcessosDashboard(window.processosData);
     populateEquipesFilter(window.processosData);
+    if (typeof window.renderProcessInsights === 'function') window.renderProcessInsights();
   } catch (err) {
     console.error('Erro ao buscar processos:', err);
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar processos: ${escapeHTML(err.message)}</td></tr>`;
@@ -376,6 +378,7 @@ window.viewProcessoDetails = function(id) {
         <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Processo</h4>
         <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
           <div><span style="color:var(--text-secondary)">Interessado:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(p.interessado || '-')}</span></div>
+          <div><span style="color:var(--text-secondary)">Tipo de Demanda:</span> <span class="badge badge-info">${escapeHTML(p.tipo_demanda || 'OUTROS')}</span></div>
           <div><span style="color:var(--text-secondary)">Vínculo Médico:</span> <span style="color:var(--text-primary)">${escapeHTML(p.vinculo_medico || '-')}</span></div>
           <div><span style="color:var(--text-secondary)">Última Movimentação:</span> <span style="color:var(--text-primary)">${dataMov}</span></div>
           <div><span style="color:var(--text-secondary)">Status:</span> <span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span></div>
@@ -485,6 +488,7 @@ function setupProcessosLogic() {
         data_recebimento: document.getElementById('procDataReceb').value || null,
         uf: document.getElementById('procUf').value || 'CE',
         municipio: document.getElementById('procMunicipio').value,
+        tipo_demanda: document.getElementById('procTipoDemanda').value,
         descricao_demanda: document.getElementById('procDescricao').value,
         interessado: document.getElementById('procInteressado').value,
         vinculo_medico: document.getElementById('procVinculo').value,
@@ -542,6 +546,7 @@ function filterProcessos() {
     if (q) {
       const matchText = normStr(p.interessado).includes(q) ||
                         normStr(p.numero_sei).includes(q) ||
+                        normStr(p.tipo_demanda).includes(q) ||
                         normStr(p.descricao_demanda).includes(q) ||
                         normStr(p.municipio).includes(q);
       if (!matchText) return false;
@@ -583,7 +588,7 @@ function filterProcessos() {
 
 function exportProcessosExcel(data) {
   // CSV export (opens as Excel)
-  const headers = ['Nº', 'Nº PROCESSO SEI', 'EQUIPE RESPONSÁVEL', 'DATA DE RECEBIMENTO DE PROCESSO', 'UF', 'MUNICÍPIO', 'DESCRIÇÃO DA DEMANDA', 'INTERESSADO', 'VÍNCULO DO(A) MÉDICO(A) COM O PROGRAMA', 'DATA DA ÚLTIMA MOVIMENTAÇÃO', 'STATUS DO PROCESSO'];
+  const headers = ['Nº', 'Nº PROCESSO SEI', 'EQUIPE RESPONSÁVEL', 'DATA DE RECEBIMENTO DE PROCESSO', 'UF', 'MUNICÍPIO', 'TIPO DE DEMANDA', 'DESCRIÇÃO DA DEMANDA', 'INTERESSADO', 'VÍNCULO DO(A) MÉDICO(A) COM O PROGRAMA', 'DATA DA ÚLTIMA MOVIMENTAÇÃO', 'STATUS DO PROCESSO'];
 
   let csv = '\uFEFF'; // BOM for UTF-8
   csv += headers.join(';') + '\n';
@@ -599,6 +604,7 @@ function exportProcessosExcel(data) {
       dataReceb,
       p.uf || '-',
       (p.municipio || '-').replace(/;/g, ','),
+      (p.tipo_demanda || 'OUTROS').replace(/;/g, ','),
       (p.descricao_demanda || '-').replace(/;/g, ',').replace(/\n/g, ' '),
       (p.interessado || '-').replace(/;/g, ','),
       (p.vinculo_medico || '-').replace(/;/g, ','),
