@@ -3,6 +3,7 @@
 // ============================================
 
 window.supervisoresData = [];
+window.currentFilteredSupervisores = [];
 
 async function loadSupervisores() {
   const tbody = document.getElementById('supervisoresTableBody');
@@ -17,6 +18,7 @@ async function loadSupervisores() {
     if (error) throw error;
     
     window.supervisoresData = data || [];
+    window.currentFilteredSupervisores = window.supervisoresData;
     populateSupervisorFilters(window.supervisoresData);
     setupSupervisorFilters();
     renderSupervisoresTable(window.supervisoresData);
@@ -164,6 +166,12 @@ function setupSupervisorFilters() {
     btnRefresh.dataset.listenerAttached = 'true';
     btnRefresh.addEventListener('click', () => loadSupervisores());
   }
+
+  const btnExport = document.getElementById('btnExportSupervisores');
+  if (btnExport && !btnExport.dataset.listenerAttached) {
+    btnExport.dataset.listenerAttached = 'true';
+    btnExport.addEventListener('click', exportSupervisoresToCSV);
+  }
 }
 
 function filterSupervisores() {
@@ -203,8 +211,71 @@ function filterSupervisores() {
     return true;
   });
 
+  window.currentFilteredSupervisores = filtered;
   renderSupervisoresTable(filtered);
 }
+
+function exportSupervisoresToCSV() {
+  const dataToExport = (window.currentFilteredSupervisores && window.currentFilteredSupervisores.length > 0)
+    ? window.currentFilteredSupervisores
+    : (window.supervisoresData || []);
+
+  if (!dataToExport || dataToExport.length === 0) {
+    if (window.showToast) window.showToast('Nenhum dado de supervisor disponível para exportar.', 'warning');
+    else alert('Nenhum dado de supervisor disponível para exportar.');
+    return;
+  }
+
+  const btn = document.getElementById('btnExportSupervisores');
+  let origHtml = '';
+  if (btn) {
+    origHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exportando...';
+    btn.disabled = true;
+  }
+
+  try {
+    const exportRows = dataToExport.map(s => ({
+      'Nome do Supervisor': s.nome_supervisor || '',
+      'E-mail': s.email || '',
+      'Telefone 1': s.telefone_1 || '',
+      'Tipo Tel 1': s.tipo_tel_1 || '',
+      'Telefone 2': s.telefone_2 || '',
+      'Tipo Tel 2': s.tipo_tel_2 || '',
+      'Telefone 3': s.telefone_3 || '',
+      'Tipo Tel 3': s.tipo_tel_3 || '',
+      'Instituição Supervisora': s.inst_supervisora || '',
+      'Sigla Instituição': s.sigla_inst || '',
+      'UF': s.uf_inst || '',
+      'Região Instituição': s.regiao_inst || '',
+      'Validado': s.validado || '',
+      'Situação': s.situacao || '',
+      'Atualizado': s.atualizado || '',
+      'Data de Atualização': s.data_atualizacao || ''
+    }));
+
+    const headers = Object.keys(exportRows[0]);
+    const csvContent = convertToCSV(exportRows, headers);
+    const d = new Date();
+    const dateStr = d.toLocaleDateString('pt-BR').replace(/\//g, '-');
+    downloadCSV(csvContent, `supervisores_pmmb_${dateStr}.csv`);
+
+    if (window.showToast) {
+      window.showToast(`${exportRows.length} supervisores exportados com sucesso!`, 'success');
+    }
+  } catch (err) {
+    console.error('Erro ao exportar supervisores para CSV:', err);
+    if (window.showToast) window.showToast('Erro ao exportar CSV: ' + err.message, 'error');
+    else alert('Erro ao exportar CSV: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+    }
+  }
+}
+
+window.exportSupervisoresToCSV = exportSupervisoresToCSV;
 
 window.limparFiltrosSupervisores = function() {
   const searchInput = document.getElementById('searchSupervisores');
