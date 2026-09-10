@@ -42,7 +42,7 @@ async function loadMedicos() {
   try {
     const { data: medicos, error } = await supabaseClient
       .from('doctors')
-      .select('id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao')
+      .select('id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao, instituicao, tutor, supervisor, cpf')
       .order('nome_profissional', { ascending: true });
 
     if (error) throw error;
@@ -103,6 +103,8 @@ function renderMedicosTable(data) {
         <td>
           <div style="font-weight: 500; color: var(--text-primary)">${m.nome_profissional ? escapeHTML(m.nome_profissional) : '<em style="color:var(--text-muted)">Vaga sem profissional</em>'}</div>
           <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(m.perfil_profissional || '-')}</div>
+          ${m.instituicao ? `<div style="font-size:0.75rem; color:var(--accent-primary); margin-top:3px; display:flex; align-items:center; gap:4px;"><i class="fas fa-university" style="font-size:0.7rem"></i> ${escapeHTML(m.instituicao)}</div>` : ''}
+          ${m.supervisor ? `<div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;"><span style="color:var(--text-muted)">Sup:</span> ${escapeHTML(m.supervisor)}${m.tutor ? ` <span style="color:var(--text-muted); margin:0 3px;">•</span> <span style="color:var(--text-muted)">Tut:</span> ${escapeHTML(m.tutor)}` : ''}</div>` : ''}
         </td>
         <td>${statusBadge}${isInativa ? '<div style="font-size:0.7rem;color:var(--accent-danger);margin-top:2px">INATIVA</div>' : ''}</td>
         <td>
@@ -122,16 +124,13 @@ function renderMedicosTable(data) {
 function populateMedicoFilters(data) {
   const selectEixo = document.getElementById('filterMedicoEixo');
   const selectGestao = document.getElementById('filterMedicoGestao');
+  const selectInst = document.getElementById('filterMedicoInstituicao');
+  const selectTutor = document.getElementById('filterMedicoTutor');
 
   if (selectEixo && data) {
     const currentVal = selectEixo.value;
     const eixos = new Set();
-    data.forEach(m => {
-      if (m.eixo_vaga) {
-        const val = m.eixo_vaga.trim();
-        if (val) eixos.add(val);
-      }
-    });
+    data.forEach(m => { if (m.eixo_vaga && m.eixo_vaga.trim()) eixos.add(m.eixo_vaga.trim()); });
     const sorted = Array.from(eixos).sort();
     selectEixo.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todos os Eixos</option>' +
       sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
@@ -141,22 +140,45 @@ function populateMedicoFilters(data) {
   if (selectGestao && data) {
     const currentVal = selectGestao.value;
     const gestoes = new Set();
-    data.forEach(m => {
-      if (m.gestao) {
-        const val = m.gestao.trim();
-        if (val) gestoes.add(val);
-      }
-    });
+    data.forEach(m => { if (m.gestao && m.gestao.trim()) gestoes.add(m.gestao.trim()); });
     const sorted = Array.from(gestoes).sort();
     selectGestao.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Gestões</option>' +
       sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
     if (currentVal && gestoes.has(currentVal)) selectGestao.value = currentVal;
   }
+
+  if (selectInst && data) {
+    const currentVal = selectInst.value;
+    const insts = new Set();
+    data.forEach(m => { if (m.instituicao && m.instituicao.trim()) insts.add(m.instituicao.trim()); });
+    const sorted = Array.from(insts).sort();
+    selectInst.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Instituições</option>' +
+      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
+    if (currentVal && insts.has(currentVal)) selectInst.value = currentVal;
+  }
+
+  if (selectTutor && data) {
+    const currentVal = selectTutor.value;
+    const tutores = new Set();
+    data.forEach(m => { if (m.tutor && m.tutor.trim()) tutores.add(m.tutor.trim()); });
+    const sorted = Array.from(tutores).sort();
+    selectTutor.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todos os Tutores</option>' +
+      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
+    if (currentVal && tutores.has(currentVal)) selectTutor.value = currentVal;
+  }
 }
 
 
 function setupMedicoFilters() {
-  const elementIds = ['searchMedicoName', 'searchMedicoCity', 'filterMedicoEixo', 'filterMedicoGestao'];
+  const elementIds = [
+    'searchMedicoName',
+    'searchMedicoCity',
+    'filterMedicoInstituicao',
+    'filterMedicoTutor',
+    'searchMedicoSupervisor',
+    'filterMedicoEixo',
+    'filterMedicoGestao'
+  ];
   
   elementIds.forEach(id => {
     const el = document.getElementById(id);
@@ -184,6 +206,9 @@ function filterMedicos() {
 
   const nameVal = normStr(document.getElementById('searchMedicoName')?.value);
   const cityVal = normStr(document.getElementById('searchMedicoCity')?.value);
+  const instVal = normStr(document.getElementById('filterMedicoInstituicao')?.value);
+  const tutorVal = normStr(document.getElementById('filterMedicoTutor')?.value);
+  const supVal = normStr(document.getElementById('searchMedicoSupervisor')?.value);
   const eixoVal = (document.getElementById('filterMedicoEixo')?.value || '').trim().toUpperCase();
   const gestaoVal = (document.getElementById('filterMedicoGestao')?.value || '').trim().toUpperCase();
 
@@ -201,13 +226,31 @@ function filterMedicos() {
       if (!city.includes(cityVal) && !regiao.includes(cityVal)) return false;
     }
 
-    // 3. Eixo da Vaga
+    // 3. Instituição
+    if (instVal) {
+      const mInst = normStr(m.instituicao);
+      if (!mInst.includes(instVal)) return false;
+    }
+
+    // 4. Tutor
+    if (tutorVal) {
+      const mTutor = normStr(m.tutor);
+      if (!mTutor.includes(tutorVal)) return false;
+    }
+
+    // 5. Supervisor
+    if (supVal) {
+      const mSup = normStr(m.supervisor);
+      if (!mSup.includes(supVal)) return false;
+    }
+
+    // 6. Eixo da Vaga
     if (eixoVal) {
       const mEixo = (m.eixo_vaga || '').trim().toUpperCase();
       if (mEixo !== eixoVal) return false;
     }
 
-    // 4. Gestão
+    // 7. Gestão
     if (gestaoVal) {
       const mGestao = (m.gestao || '').trim().toUpperCase();
       if (mGestao !== gestaoVal) return false;
@@ -301,6 +344,16 @@ async function viewMedicoDetails(id) {
         <div class="detail-group"><div class="detail-label">Raça/Cor</div><div class="detail-value">${escapeHTML(medico.raca_cor || '-')}</div></div>
         <div class="detail-group"><div class="detail-label">Início Atividade</div><div class="detail-value">${escapeHTML(medico.inicio_atividade || '-')}</div></div>
         <div class="detail-group"><div class="detail-label">Encerramento</div><div class="detail-value">${escapeHTML(medico.encerramento_atividade || '-')}</div></div>
+        <div class="detail-group" style="grid-column: 1 / -1; background: rgba(124,58,237,0.06); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid rgba(124,58,237,0.18);">
+          <div style="font-weight: 700; color: var(--accent-primary); font-size: 0.85rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fas fa-university"></i> Vinculação Acadêmica & Tutoria (PMMB)
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.85rem;">
+            <div><span style="color: var(--text-muted);">Instituição:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.instituicao || 'Não vinculado')}</strong></div>
+            <div><span style="color: var(--text-muted);">Supervisor:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.supervisor || 'Não informado')}</strong></div>
+            <div><span style="color: var(--text-muted);">Tutor:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.tutor || 'Não informado')}</strong></div>
+          </div>
+        </div>
         <div class="detail-group"><div class="detail-label">CPF</div><div class="detail-value">${maskCPF(medico.cpf)}</div></div>
         <div class="detail-group"><div class="detail-label">Email</div><div class="detail-value">${escapeHTML(medico.email || '-')}</div></div>
         <div class="detail-group"><div class="detail-label">Telefone</div><div class="detail-value">${escapeHTML(medico.telefone || '-')}</div></div>

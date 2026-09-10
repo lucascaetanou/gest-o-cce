@@ -8,7 +8,7 @@
   <meta name="description" content="Painel de Administração">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=26">
+  <link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body style="display: none;">
   <div class="admin-layout">
@@ -504,6 +504,20 @@
                 <div class="input-wrapper" style="width: 100%;">
                   <input type="text" id="searchMedicoCity" placeholder="Buscar município ou região..." style="width: 100%;">
                   <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div>
+                  <select id="filterMedicoInstituicao" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="" style="background: #0b2236; color: #fff;">Todas as Instituições</option>
+                  </select>
+                </div>
+                <div>
+                  <select id="filterMedicoTutor" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="" style="background: #0b2236; color: #fff;">Todos os Tutores</option>
+                  </select>
+                </div>
+                <div class="input-wrapper" style="width: 100%;">
+                  <input type="text" id="searchMedicoSupervisor" placeholder="Buscar supervisor..." style="width: 100%;">
+                  <i class="fas fa-user-check"></i>
                 </div>
                 <div>
                   <select id="filterMedicoEixo" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
@@ -1151,21 +1165,21 @@
 
   <!-- Configuração e Autenticação -->
   <script src="js/config.js"></script>
-  <script src="js/auth.js?v=26"></script>
+  <script src="js/auth.js?v=27"></script>
 
   <!-- Módulos da Aplicação Gestão CCE -->
   <script src="js/utils.js?v=5"></script>
-  <script src="js/medicos.js?v=26"></script>
-  <script src="js/dashboard.js?v=26"></script>
-  <script src="js/referencias.js?v=26"></script>
+  <script src="js/medicos.js?v=27"></script>
+  <script src="js/dashboard.js?v=27"></script>
+  <script src="js/referencias.js?v=27"></script>
   <script src="js/supervisores.js?v=26"></script>
   <script src="js/tutores.js?v=26"></script>
   <script src="js/materiais.js?v=26"></script>
-  <script src="js/processos.js?v=26"></script>
+  <script src="js/processos.js?v=27"></script>
   <script src="js/users.js?v=27"></script>
 
   <!-- Orquestrador Principal -->
-  <script src="js/admin.js?v=26"></script>
+  <script src="js/admin.js?v=27"></script>
   <script src="js/magic-bento.js?v=3"></script>
 </body>
 </html>
