@@ -167,6 +167,8 @@ function renderDashboardWithCurrentFilter() {
   const emProcesso = ativas.filter(d => d.status === 'EM PROCESSO DE OCUPACAO');
   const federal = ativas.filter(d => d.modalidade && !d.modalidade.toUpperCase().includes('COPARTICIPACAO'));
   const copart = ativas.filter(d => d.modalidade && d.modalidade.toUpperCase().includes('COPARTICIPACAO'));
+  const pmm = ativas.filter(d => (d.gestao || '').toUpperCase() === 'PMM');
+  const agsus = ativas.filter(d => (d.gestao || '').toUpperCase() === 'AGSUS');
   const municipios = new Set(filteredDoctors.map(d => d.municipio_atuacao).filter(Boolean));
 
   const txOcupacao = ativas.length > 0 ? ((ocupadas.length / ativas.length) * 100).toFixed(0) : 0;
@@ -174,7 +176,16 @@ function renderDashboardWithCurrentFilter() {
   // Atualizar DOM
   const elMed = document.getElementById('statMedicosAtivos'); if (elMed) elMed.textContent = ocupadas.length;
   const elVag = document.getElementById('statTotalVagas'); if (elVag) elVag.textContent = ativas.length;
-  const elVagDet = document.getElementById('statVagasDet'); if (elVagDet) elVagDet.textContent = `${federal.length} fed. + ${copart.length} copart.`;
+  const elVagDet = document.getElementById('statVagasDet'); 
+  if (elVagDet) {
+    if (federal.length + copart.length > 0) {
+      elVagDet.textContent = `${federal.length} fed. + ${copart.length} copart.`;
+    } else if (pmm.length + agsus.length > 0) {
+      elVagDet.textContent = `${pmm.length} PMM + ${agsus.length} AgSUS`;
+    } else {
+      elVagDet.textContent = `${ocupadas.length} ocup. + ${desocupadas.length} desoc.`;
+    }
+  }
   const elTx = document.getElementById('statTaxaOcupacao'); if (elTx) elTx.textContent = `${txOcupacao}%`;
   const elTxDet = document.getElementById('statTaxaDet'); if (elTxDet) elTxDet.textContent = `${ocupadas.length} de ${ativas.length}`;
   const elDesoc = document.getElementById('statVagasDesocupadas'); if (elDesoc) elDesoc.textContent = desocupadas.length;
