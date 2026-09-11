@@ -12,6 +12,7 @@ const ROUTE_MAP = {
   'medicos': { navId: 'navMedicos', section: 'sectionMedicos', title: 'Médicos (PMMB)', subtitle: 'Consulta e filtros de profissionais' },
   'supervisores': { navId: 'navSupervisores', section: 'sectionSupervisores', title: 'Supervisores (PMMB)', subtitle: 'Gerenciamento de Supervisores' },
   'tutores': { navId: 'navTutores', section: 'sectionTutores', title: 'Tutores (PMMB)', subtitle: 'Gerenciamento de Tutores' },
+  'secretarios': { navId: 'navSecretarios', section: 'sectionSecretarios', title: 'Secretários de Saúde', subtitle: 'Gestores municipais de saúde dos 184 municípios do Ceará' },
   'processos': { navId: 'navProcessos', section: 'sectionProcessos', title: 'Processos Administrativos', subtitle: 'Demandas e Acompanhamento de Processos SEI' },
   'materiais': { navId: 'navMateriais', section: 'sectionMateriais', title: 'Documentos e Materiais', subtitle: 'Repositório de apoio e normativas' },
   'users': { navId: 'navUsers', section: 'sectionUsers', title: 'Contas de Acesso', subtitle: 'Gerenciar permissões de usuários' }
@@ -103,6 +104,12 @@ function onSectionActivated(routeKey) {
     case 'tutores':
       if (typeof filterTutores === 'function') {
         filterTutores();
+      }
+      break;
+
+    case 'secretarios':
+      if (typeof loadSecretarios === 'function') {
+        loadSecretarios();
       }
       break;
 

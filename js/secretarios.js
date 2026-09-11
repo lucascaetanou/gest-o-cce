@@ -1,0 +1,286 @@
+// ============================================
+// Gestão CCE — Módulo de Secretários Municipais de Saúde
+// ============================================
+
+window.secretariosData = [];
+window.currentFilteredSecretarios = [];
+
+// Base embarcada completa (184 municípios) para funcionamento imediato e fallback
+const SECRETARIOS_EMBEDDED_DATA = [{"municipio": "ABAIARA", "nome_secretario": "Yasmim Grangeiro Sampaio", "email": "yasmimsampaio2025@gmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "ACARAPE", "nome_secretario": "Viviane Beserra Holanda", "email": "vivianeholanda24@gmail.com / smsacarape2021@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 1, "vagas_desocupadas": 2, "total_vagas": 3}, {"municipio": "ACARAÚ", "nome_secretario": "Ana Paula Praciano Teixeira", "email": "anapaula_praciano@hotmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 20, "vagas_desocupadas": 1, "total_vagas": 21}, {"municipio": "ACOPIARA", "nome_secretario": "Antonia Norma Teclane Marques Lima", "email": "normaenf33@yahoo.com.br", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 17, "vagas_desocupadas": 0, "total_vagas": 17}, {"municipio": "AIUABA", "nome_secretario": "Candice feitosa de Alencar Mendes", "email": "candicefeitosaenf@gmail.com", "regiao_saude": "14ª REGIÃO TAUA", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "ALCÂNTARAS", "nome_secretario": "Ana Cassia Sousa Gomes", "email": "anacassiagomesas@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 6, "vagas_desocupadas": 1, "total_vagas": 7}, {"municipio": "ALTANEIRA", "nome_secretario": "Janainny Duarte de Alencar", "email": "duartejanainny@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 2, "vagas_desocupadas": 0, "total_vagas": 2}, {"municipio": "ALTO SANTO", "nome_secretario": "Rita de Cássia Chagas Bezerra", "email": "ritaccbezerra@gmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "AMONTADA", "nome_secretario": "Larisse Araújo de Sousa", "email": "contaslarisse@gmail.com", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 14, "vagas_desocupadas": 2, "total_vagas": 16}, {"municipio": "ANTONINA DO NORTE", "nome_secretario": "Paloma Pereira de Lima", "email": "palomap.lima@icloud.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 0, "vagas_desocupadas": 1, "total_vagas": 1}, {"municipio": "APUIARÉS", "nome_secretario": "Mabel Andrade Girão", "email": "mabelauditoria@hotmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 6, "vagas_desocupadas": 1, "total_vagas": 7}, {"municipio": "AQUIRAZ", "nome_secretario": "David Faustino de Lima", "email": "david.faustino@hotmail.com", "regiao_saude": "1ª REGIÃO FORTALEZA", "medicos_ativos": 8, "vagas_desocupadas": 4, "total_vagas": 12}, {"municipio": "ARACATI", "nome_secretario": "Ana Lúcia da Costa Mello", "email": "ana.mello@aracati.ce.gov.br", "regiao_saude": "7ª REGIÃO ARACATI", "medicos_ativos": 22, "vagas_desocupadas": 1, "total_vagas": 23}, {"municipio": "ARACOIABA", "nome_secretario": "Viviane Gonçalves de Sousa Adeodato", "email": "goncalvesviviane9821@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 11, "vagas_desocupadas": 1, "total_vagas": 12}, {"municipio": "ARARENDÁ", "nome_secretario": "José Alexandre Alves Ferreira", "email": "xandyy1011@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "ARARIPE", "nome_secretario": "Thamiris Carvalho Mendes", "email": "thamiriscarvalhomendes@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 0, "vagas_desocupadas": 5, "total_vagas": 5}, {"municipio": "ARATUBA", "nome_secretario": "Antônio Aiustrong Paz Paiva", "email": "pazpaiva21@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 4, "vagas_desocupadas": 1, "total_vagas": 5}, {"municipio": "ARNEIROZ", "nome_secretario": "Antônia Lianna Araújo Bezerra", "email": "lianna.bezerra@yahoo.com.br", "regiao_saude": "14ª REGIÃO TAUA", "medicos_ativos": 1, "vagas_desocupadas": 0, "total_vagas": 1}, {"municipio": "ASSARÉ", "nome_secretario": "Regina Alice Ferreira Furtado", "email": "reginafurtadosaude@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 6, "vagas_desocupadas": 0, "total_vagas": 6}, {"municipio": "AURORA", "nome_secretario": "José Drivaldo de Oliveira", "email": "drivaldooliveira@hotmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "BAIXIO", "nome_secretario": "Analia  das Dores Ferreira fernandes", "email": "analiafernandesbx@gmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 1, "vagas_desocupadas": 0, "total_vagas": 1}, {"municipio": "BANABUIU", "nome_secretario": "Weyber Douglas Silva Nobre", "email": "weybernobre@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 8, "vagas_desocupadas": 0, "total_vagas": 8}, {"municipio": "BARBALHA", "nome_secretario": "Janaína Anésia Nogueira do Nascimento e Silva", "email": "janainaanesianogueira@gmail.com", "regiao_saude": "21ª REGIÃO JUAZEIRO DO NORTE", "medicos_ativos": 8, "vagas_desocupadas": 0, "total_vagas": 8}, {"municipio": "BARREIRA", "nome_secretario": "Izabel Cristina de Araújo Alves", "email": "isacrisaf@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 9, "vagas_desocupadas": 0, "total_vagas": 9}, {"municipio": "BARRO", "nome_secretario": "Maria Pereira de Lira Silva", "email": "vereadoravanda2023@gmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 2, "vagas_desocupadas": 0, "total_vagas": 2}, {"municipio": "BARROQUINHA", "nome_secretario": "Simone Alves Gouveia", "email": "symony_2015@hotmail.com", "regiao_saude": "16ª REGIÃO CAMOCIM", "medicos_ativos": 8, "vagas_desocupadas": 0, "total_vagas": 8}, {"municipio": "BATURITÉ", "nome_secretario": "Maria Auxiliadora Bessa Santos", "email": "santosmariaabessa@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "BEBERIBE", "nome_secretario": "Fátima Aline Aristides Martins", "email": "alineevida@hotmail.com", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 10, "vagas_desocupadas": 7, "total_vagas": 17}, {"municipio": "BELA CRUZ", "nome_secretario": "Renata Morais Andrade", "email": "renamandrade@hotmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 8, "vagas_desocupadas": 0, "total_vagas": 8}, {"municipio": "BOA VIAGEM", "nome_secretario": "Ana Bezerra do Nascimento Neta", "email": "biabezerra84@hotmil.com", "regiao_saude": "5ª REGIÃO CANINDE", "medicos_ativos": 7, "vagas_desocupadas": 1, "total_vagas": 8}, {"municipio": "BREJO SANTO", "nome_secretario": "Patrícia Rolim Rocha", "email": "patriciadize@hotmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "CAMOCIM", "nome_secretario": "Emanuelle Canafístula Oliveira e Silva", "email": "canafistulaemanuelle@gmail.com", "regiao_saude": "16ª REGIÃO CAMOCIM", "medicos_ativos": 15, "vagas_desocupadas": 2, "total_vagas": 17}, {"municipio": "CAMPOS SALES", "nome_secretario": "Morgana Kelly Bezerra Fortaleza", "email": "saudecampossalesce@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 9, "vagas_desocupadas": 1, "total_vagas": 10}, {"municipio": "CANINDÉ", "nome_secretario": "Aline Mayara Alves Almeida", "email": "almeidaalinemayara@gmail.com", "regiao_saude": "5ª REGIÃO CANINDE", "medicos_ativos": 22, "vagas_desocupadas": 2, "total_vagas": 24}, {"municipio": "CAPISTRANO", "nome_secretario": "Elizabete Rocha de Souza", "email": "elizabete2908@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "CARIDADE", "nome_secretario": "Tathiany Lino Fernandes", "email": "tathianyfernandes@yahoo.com.br", "regiao_saude": "5ª REGIÃO CANINDE", "medicos_ativos": 5, "vagas_desocupadas": 2, "total_vagas": 7}, {"municipio": "CARIRÉ", "nome_secretario": "Raila Aguiar Portela", "email": "railaaguiar@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 3, "vagas_desocupadas": 1, "total_vagas": 4}, {"municipio": "CARIRIAÇU", "nome_secretario": "Emerson da Silva Xavier", "email": "emersonlavras2011@gmail.com", "regiao_saude": "21ª REGIÃO JUAZEIRO DO NORTE", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "CARIÚS", "nome_secretario": "Araquemira dos Santos Louro", "email": "araquemira@yahoo.com.br", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 7, "vagas_desocupadas": 1, "total_vagas": 8}, {"municipio": "CARNAUBAL", "nome_secretario": "Maria de Fátima Gomes Barroso", "email": "fafa.gomes1@hotmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 5, "vagas_desocupadas": 1, "total_vagas": 6}, {"municipio": "CASCAVEL", "nome_secretario": "Emmanuella Carvalho Fonseca", "email": "emmanuellacf@gmail.com", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 11, "vagas_desocupadas": 1, "total_vagas": 12}, {"municipio": "CATARINA", "nome_secretario": "Wandevelde Guedes Mendonça", "email": "drwandevelde@gmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "CATUNDA", "nome_secretario": "Rogério Rodrigues de Mendonça", "email": "rogeriofisio13@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "CAUCAIA", "nome_secretario": "Moacir de Sousa Soares", "email": "sms@sms.caucaia.ce.gov.br", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 17, "vagas_desocupadas": 22, "total_vagas": 39}, {"municipio": "CEDRO", "nome_secretario": "Maria Marcleide do Nascimento", "email": "mariamariamarcleide@gmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 9, "vagas_desocupadas": 0, "total_vagas": 9}, {"municipio": "CHAVAL", "nome_secretario": "Antônio Edson Melo da Rocha", "email": "edson_melo.wsk@hotmail.com", "regiao_saude": "16ª REGIÃO CAMOCIM", "medicos_ativos": 3, "vagas_desocupadas": 2, "total_vagas": 5}, {"municipio": "CHORÓ", "nome_secretario": "Jamille Maria Paz Moura", "email": "jamilly_paz22@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 3, "vagas_desocupadas": 4, "total_vagas": 7}, {"municipio": "CHOROZINHO", "nome_secretario": "Alan Sidney Jacinto da Silva", "email": "alansidneyjacinto@gmail.com", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 8, "vagas_desocupadas": 1, "total_vagas": 9}, {"municipio": "COREAÚ", "nome_secretario": "Beatriz de Assis Vasconcelos", "email": "elizbia3004@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 7, "vagas_desocupadas": 2, "total_vagas": 9}, {"municipio": "CRATEÚS", "nome_secretario": "Edypo De Sousa Carlos", "email": "edypo.saude@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 12, "vagas_desocupadas": 0, "total_vagas": 12}, {"municipio": "CRATO", "nome_secretario": "Sheyla Martins Alves Francelino", "email": "sheylamartinsalves@hotmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 14, "vagas_desocupadas": 0, "total_vagas": 14}, {"municipio": "CROATÁ", "nome_secretario": "Elimara de Macedo Lima Araújo", "email": "elimara27@gmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 3, "vagas_desocupadas": 1, "total_vagas": 4}, {"municipio": "CRUZ", "nome_secretario": "Evaldo Eufrásio Vasconcelos", "email": "zuc0606@gmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 9, "vagas_desocupadas": 1, "total_vagas": 10}, {"municipio": "DEP. IRA. PINHEIRO", "nome_secretario": "Maria Vângela Nunes", "email": "vangelanunes.sms@gmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 3, "vagas_desocupadas": 2, "total_vagas": 5}, {"municipio": "ERERÊ", "nome_secretario": "Ana Naiza Guerra Souza", "email": "naizasguerra@gmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 1, "vagas_desocupadas": 2, "total_vagas": 3}, {"municipio": "EUSÉBIO", "nome_secretario": "Zózimo Luis de Medeiros Silva", "email": "zozimomedeiros2@gmail.com", "regiao_saude": "", "medicos_ativos": 0, "vagas_desocupadas": 0, "total_vagas": 0}, {"municipio": "FARIAS BRITO", "nome_secretario": "Veronica Maira Costa Oliveira", "email": "veronicamairahgfb@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 4, "vagas_desocupadas": 1, "total_vagas": 5}, {"municipio": "FORQUILHA", "nome_secretario": "Carlos Romualdo de Carvalho e Araujo", "email": "romualdocrca@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "FORTALEZA", "nome_secretario": "Riane Maria Barbosa de Azevedo", "email": "riane.azevedo@sms.fortaleza.ce.gov.br", "regiao_saude": "1ª REGIÃO FORTALEZA", "medicos_ativos": 227, "vagas_desocupadas": 23, "total_vagas": 250}, {"municipio": "FORTIM", "nome_secretario": "Katiane Gondim da Costa", "email": "katinefortim@gmail.com", "regiao_saude": "7ª REGIÃO ARACATI", "medicos_ativos": 8, "vagas_desocupadas": 1, "total_vagas": 9}, {"municipio": "FRECHEIRINHA", "nome_secretario": "Flavio Marcilio Saraiva de Almeida", "email": "marciliopacuja@yahoo.com.br", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "GENERAL SAMPAIO", "nome_secretario": "Francisca Maria Bezerra dos Santos", "email": "fran.mbs@hotmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 4, "vagas_desocupadas": 1, "total_vagas": 5}, {"municipio": "GRAÇA", "nome_secretario": "Isadora Amaral Rodrigues", "email": "isadoraamaral95@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 8, "vagas_desocupadas": 0, "total_vagas": 8}, {"municipio": "GRANJEIRO", "nome_secretario": "Cicera Aderilma Soares Fernandes", "email": "aderilmas@hotmail.com", "regiao_saude": "21ª REGIÃO JUAZEIRO DO NORTE", "medicos_ativos": 1, "vagas_desocupadas": 0, "total_vagas": 1}, {"municipio": "GRANJA", "nome_secretario": "Maria Rafaela Ferreira dos Santos", "email": "rafaferreirasantos87@gmail.com", "regiao_saude": "16ª REGIÃO CAMOCIM", "medicos_ativos": 21, "vagas_desocupadas": 2, "total_vagas": 23}, {"municipio": "GROAÍRAS", "nome_secretario": "Maria Conceição Lima Paiva", "email": "conceicaolima1990@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 2, "vagas_desocupadas": 3, "total_vagas": 5}, {"municipio": "GUAIÚBA", "nome_secretario": "Kaio Virginio Gurgel Nogueira", "email": "40kaio@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 3, "vagas_desocupadas": 7, "total_vagas": 10}, {"municipio": "GUARACIABA DO NORTE", "nome_secretario": "Antonio Glaidson Martins de Sousa", "email": "glaidms@hotmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 14, "vagas_desocupadas": 2, "total_vagas": 16}, {"municipio": "GUARAMIRANGA", "nome_secretario": "Camila Mascarenhas Moreira", "email": "Enfacamila.moreira@outlook.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 2, "vagas_desocupadas": 1, "total_vagas": 3}, {"municipio": "HIDROLANDIA", "nome_secretario": "Francisco Nilo Cid de Freitas Neto", "email": "nilonetto4@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "HORIZONTE", "nome_secretario": "Ana Claudia de França Morais", "email": "anaclaudiafm@yahoo.com.br", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 12, "vagas_desocupadas": 6, "total_vagas": 18}, {"municipio": "IBARETAMA", "nome_secretario": "Fernando Wilson Fernandes Silva", "email": "fw.fernandes@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 6, "vagas_desocupadas": 1, "total_vagas": 7}, {"municipio": "IBIAPINA", "nome_secretario": "Karlos Ulysses Timbó da Costa", "email": "timboulysses@gmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 10, "vagas_desocupadas": 0, "total_vagas": 10}, {"municipio": "IBICUITINGA", "nome_secretario": "Maria Luciana de Almeida Lima", "email": "lulima.1018@gmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 0, "vagas_desocupadas": 2, "total_vagas": 2}, {"municipio": "ICAPUÍ", "nome_secretario": "Francisca Nathalia Barreto Rats", "email": "Nathaliarats@hotmail.com", "regiao_saude": "7ª REGIÃO ARACATI", "medicos_ativos": 7, "vagas_desocupadas": 1, "total_vagas": 8}, {"municipio": "ICÓ", "nome_secretario": "Francisca Regiane Braz de Carvalho", "email": "regiane.braz2021@gmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 10, "vagas_desocupadas": 4, "total_vagas": 14}, {"municipio": "IGUATU", "nome_secretario": "João Leonardo de Souza Mendonça", "email": "gestaosms@iguatu.ce.gov.br", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 28, "vagas_desocupadas": 3, "total_vagas": 31}, {"municipio": "INDEPENDÊNCIA", "nome_secretario": "Lidiana Ximenes Servulo Moreira Lima", "email": "lidianaximenes75@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 12, "vagas_desocupadas": 1, "total_vagas": 13}, {"municipio": "IPAPORANGA", "nome_secretario": "Tayglecia Landim Rodrigues", "email": "tayglecia.landim@hotmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 6, "vagas_desocupadas": 0, "total_vagas": 6}, {"municipio": "IPAUMIRIM", "nome_secretario": "Tereza Laura Dantas Nóbrega Nery", "email": "terezasmsipaumirim@gmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 2, "vagas_desocupadas": 1, "total_vagas": 3}, {"municipio": "IPU", "nome_secretario": "Paulo Whanderson Ferreira Sampaio", "email": "edgardcastro26@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 14, "vagas_desocupadas": 1, "total_vagas": 15}, {"municipio": "IPUEIRAS", "nome_secretario": "Iago Luís Mesquita de Sousa", "email": "iagofisio7@hotmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 16, "vagas_desocupadas": 0, "total_vagas": 16}, {"municipio": "IRACEMA", "nome_secretario": "Leonardo Rafael de Carvalho Celestino", "email": "rafaeltozelsms@gmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "IRAUÇUBA", "nome_secretario": "Hérica Oliveira Pinheiro", "email": "Herica884@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 7, "vagas_desocupadas": 1, "total_vagas": 8}, {"municipio": "ITAIÇABA", "nome_secretario": "Isadora Lorena da Silva Fidélis", "email": "lorena.fidelis@hotmail.com", "regiao_saude": "7ª REGIÃO ARACATI", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "ITAITINGA", "nome_secretario": "Ângelo Luis Leite Nóbrega", "email": "angelo.cosemsce@gmail.com", "regiao_saude": "1ª REGIÃO FORTALEZA", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "ITAPAJE", "nome_secretario": "Raimundo Anderson Silva de Oliveira", "email": "andersontomazonice@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 22, "vagas_desocupadas": 3, "total_vagas": 25}, {"municipio": "ITAPIPOCA", "nome_secretario": "Georgina Freire Machado", "email": "georginafm1971@yahoo.com.br", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 33, "vagas_desocupadas": 13, "total_vagas": 46}, {"municipio": "ITAPIÚNA", "nome_secretario": "Cristiane Araújo Vieira Alves", "email": "cristianearaujosms@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 5, "vagas_desocupadas": 5, "total_vagas": 10}, {"municipio": "ITAREMA", "nome_secretario": "Leticia Reichel dos Santos", "email": "leticiareichel15@gmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 17, "vagas_desocupadas": 3, "total_vagas": 20}, {"municipio": "ITATIRA", "nome_secretario": "Tamara Ferreira Soares Mendes", "email": "tamarafsoares@gmail.com / tamarafarmaceutica91@gmail.com", "regiao_saude": "5ª REGIÃO CANINDE", "medicos_ativos": 6, "vagas_desocupadas": 1, "total_vagas": 7}, {"municipio": "JAGUARETAMA", "nome_secretario": "Francisca Airlene Dantas e Silva", "email": "airlenedantas@gmail.com", "regiao_saude": "9ª REGIÃO RUSSAS", "medicos_ativos": 6, "vagas_desocupadas": 2, "total_vagas": 8}, {"municipio": "JAGUARIBARA", "nome_secretario": "Ana Maria de Oliveira Aquino Neta", "email": "anaoliveiraneta@hotmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 2, "vagas_desocupadas": 1, "total_vagas": 3}, {"municipio": "JAGUARIBE", "nome_secretario": "Ianny de Assis Dantas Diógenes", "email": "ianny_dantas@hotmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "JAGUARUANA", "nome_secretario": "Francisco Jose de Oliveira", "email": "fjooliveira126@gmail.com", "regiao_saude": "9ª REGIÃO RUSSAS", "medicos_ativos": 14, "vagas_desocupadas": 1, "total_vagas": 15}, {"municipio": "JARDIM", "nome_secretario": "Fabiana Barros de Araújo Filgueira", "email": "fabiana.barros88@gmail.com", "regiao_saude": "21ª REGIÃO JUAZEIRO DO NORTE", "medicos_ativos": 6, "vagas_desocupadas": 1, "total_vagas": 7}, {"municipio": "JATI", "nome_secretario": "Tânia Caroline de Sousa Xavier", "email": "carol.xavier19@hotmail.com", "regiao_saude": "", "medicos_ativos": 0, "vagas_desocupadas": 0, "total_vagas": 0}, {"municipio": "JIJOCA DE JERICOACARA", "nome_secretario": "Dennis Moreira Gomes", "email": "dennisgomes.nurse@gmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 5, "vagas_desocupadas": 1, "total_vagas": 6}, {"municipio": "JUAZEIRO DO NORTE", "nome_secretario": "Jose Bendimar de Lima Junior", "email": "gab.sejuv.pmjn@gmail.com", "regiao_saude": "21ª REGIÃO JUAZEIRO DO NORTE", "medicos_ativos": 23, "vagas_desocupadas": 1, "total_vagas": 24}, {"municipio": "JUCÁS", "nome_secretario": "Carlos Eduardo de Souza Moura", "email": "caduiguatu1980@gmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 3, "vagas_desocupadas": 4, "total_vagas": 7}, {"municipio": "LAVRAS DA MANGABEIRA", "nome_secretario": "Andreza Maria Campos Pessoa", "email": "andreeza.pessoa@hotmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "LIMOEIRO DO NORTE", "nome_secretario": "Nacelio Alves do Nascimento", "email": "nacelioalves@hotmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 12, "vagas_desocupadas": 0, "total_vagas": 12}, {"municipio": "MADALENA", "nome_secretario": "Crislene Barros Uchôa", "email": "crisleneuchoadavi@gmail.com", "regiao_saude": "5ª REGIÃO CANINDE", "medicos_ativos": 3, "vagas_desocupadas": 3, "total_vagas": 6}, {"municipio": "MARACANAÚ", "nome_secretario": "Icaro Tavares Borges", "email": "icaro10borges@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 15, "vagas_desocupadas": 2, "total_vagas": 17}, {"municipio": "MARANGUAPE", "nome_secretario": "Maria Cleonice dos Santos Caldas", "email": "mcleocaldas@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 26, "vagas_desocupadas": 7, "total_vagas": 33}, {"municipio": "MARCO", "nome_secretario": "Jesus Dyego Armando Silva", "email": "dyegoarmandosilva@gmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "MARTINÓPOLE", "nome_secretario": "Christiele Juciane Matos Braga", "email": "christiele.braga@gmail.com", "regiao_saude": "16ª REGIÃO CAMOCIM", "medicos_ativos": 5, "vagas_desocupadas": 1, "total_vagas": 6}, {"municipio": "MASSAPÊ", "nome_secretario": "Soraya Ferreira Costa", "email": "sorayacosta26@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 11, "vagas_desocupadas": 2, "total_vagas": 13}, {"municipio": "MAURITI", "nome_secretario": "Maria Aparecida da Silva Barbosa", "email": "mariaaparecidasilva7506@gmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 17, "vagas_desocupadas": 0, "total_vagas": 17}, {"municipio": "MERUOCA", "nome_secretario": "José Davi de Souza Silva", "email": "dsenferme@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "MILAGRES", "nome_secretario": "Vinicius Canuto Filgueira Grangeiro", "email": "viniciusgrangeiro10@gmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 7, "vagas_desocupadas": 4, "total_vagas": 11}, {"municipio": "MILHÃ", "nome_secretario": "Francisco Regis Magno Ferreira Pinheiro", "email": "regissaude2009@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 5, "vagas_desocupadas": 2, "total_vagas": 7}, {"municipio": "MIRAÍMA", "nome_secretario": "Antônia Maria Alves Piheiro Pinto", "email": "toinhapinheiro74@hotmail.com", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 6, "vagas_desocupadas": 0, "total_vagas": 6}, {"municipio": "MISSÃO VELHA", "nome_secretario": "Francisco Rafael Tavares de Luna", "email": "saude@missaovelha.ce.gov.br", "regiao_saude": "21ª REGIÃO JUAZEIRO DO NORTE", "medicos_ativos": 3, "vagas_desocupadas": 5, "total_vagas": 8}, {"municipio": "MOMBAÇA", "nome_secretario": "Liane Evangelista de Alencar", "email": "liane_alencar@hotmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 12, "vagas_desocupadas": 2, "total_vagas": 14}, {"municipio": "MONSENHOR TABOSA", "nome_secretario": "Nilcelha Alves Santana", "email": "gestaoemsaude.nilcelha@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 8, "vagas_desocupadas": 1, "total_vagas": 9}, {"municipio": "MORADA NOVA", "nome_secretario": "Wilames Freire Bezerra", "email": "wilamesfreire@ig.com.br", "regiao_saude": "9ª REGIÃO RUSSAS", "medicos_ativos": 26, "vagas_desocupadas": 4, "total_vagas": 30}, {"municipio": "MORAUJO", "nome_secretario": "Iramar Vieira Moreira", "email": "saudemoraujo@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "MORRINHOS", "nome_secretario": "Mayrla Keyla da Costa Barroso", "email": "mayrla_barroso@hotmail.com", "regiao_saude": "12ª REGIÃO ACARAU", "medicos_ativos": 6, "vagas_desocupadas": 0, "total_vagas": 6}, {"municipio": "MUCAMBO", "nome_secretario": "Francisco Fábio Damasceno", "email": "fabio.pjmucambo@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "MULUNGU", "nome_secretario": "Mariza Calixto", "email": "marizacpaz@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 3, "vagas_desocupadas": 2, "total_vagas": 5}, {"municipio": "NOVA OLINDA", "nome_secretario": "Kaline Barbosa Cavalcante Arraes", "email": "kalineenf2@hotmail.com", "regiao_saude": "", "medicos_ativos": 0, "vagas_desocupadas": 0, "total_vagas": 0}, {"municipio": "NOVA RUSSAS", "nome_secretario": "Juliana Linhares Coelho", "email": "julcoelho.30@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 9, "vagas_desocupadas": 1, "total_vagas": 10}, {"municipio": "NOVO ORIENTE", "nome_secretario": "Paula de Vasconcelos Pinheiro", "email": "paulapinheiropy@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 13, "vagas_desocupadas": 1, "total_vagas": 14}, {"municipio": "OCARA", "nome_secretario": "Maria de Fátima Viana Gois", "email": "fatimaviana@ocara.ce.gov.br", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "ORÓS", "nome_secretario": "Everton Ferreira da Silva", "email": "drevertonsilva2020@gmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "PACAJUS", "nome_secretario": "Mariana Elba Costa", "email": "marianaelbacosta@gmail.com", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 19, "vagas_desocupadas": 4, "total_vagas": 23}, {"municipio": "PACATUBA", "nome_secretario": "Roseane Gomes Monteiro Menezes", "email": "secretariosaudepacatuba@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 10, "vagas_desocupadas": 2, "total_vagas": 12}, {"municipio": "PACOTI", "nome_secretario": "Samilly de Sousa Barros", "email": "samillyb145@gmail.com", "regiao_saude": "4ª REGIÃO BATURITE", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "PACUJÁ", "nome_secretario": "Dayana Marques Rodrigues", "email": "dayanasaude2025@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 1, "vagas_desocupadas": 0, "total_vagas": 1}, {"municipio": "PALHANO", "nome_secretario": "Rafaella Nunes da Silva", "email": "rafaellafarmaceutica98@gmail.com", "regiao_saude": "9ª REGIÃO RUSSAS", "medicos_ativos": 4, "vagas_desocupadas": 1, "total_vagas": 5}, {"municipio": "PALMACIA", "nome_secretario": "Mateus Sampaio Andrade Rocha de Holanda Farias", "email": "mateussampaioandrade@gmail.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 2, "vagas_desocupadas": 0, "total_vagas": 2}, {"municipio": "PARACURU", "nome_secretario": "Loide Chrystine Peixoto Landim", "email": "loidylandim@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 10, "vagas_desocupadas": 1, "total_vagas": 11}, {"municipio": "PARAIPABA", "nome_secretario": "Francisco Wellington de Castro Júnior", "email": "wellingtoncastro.psi@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "PARAMBU", "nome_secretario": "Luís Alves Noronha Neto", "email": "netosaudeab@gmail.com", "regiao_saude": "14ª REGIÃO TAUA", "medicos_ativos": 11, "vagas_desocupadas": 4, "total_vagas": 15}, {"municipio": "PARAMOTÍ", "nome_secretario": "Fernando Jefferson Ribeiro Nascimento", "email": "fernandonascimentofarma@gmail.com", "regiao_saude": "5ª REGIÃO CANINDE", "medicos_ativos": 4, "vagas_desocupadas": 2, "total_vagas": 6}, {"municipio": "PEDRA BRANCA", "nome_secretario": "Kênia Sumayra da Páscoa Queiroz", "email": "keniapascoa2017@gmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 13, "vagas_desocupadas": 3, "total_vagas": 16}, {"municipio": "PENAFORTE", "nome_secretario": "Clebiana Cruz de Moura Rocha", "email": "clebianashoes@gmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 1, "vagas_desocupadas": 3, "total_vagas": 4}, {"municipio": "PENTECOSTE", "nome_secretario": "Maria Zuleide Amorim Muniz", "email": "zuleideamorimmuniz@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 14, "vagas_desocupadas": 2, "total_vagas": 16}, {"municipio": "PEREIRO", "nome_secretario": "Luiz Bezerra de Queiroz Neto", "email": "luizneto.queiroz@hotmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 4, "vagas_desocupadas": 1, "total_vagas": 5}, {"municipio": "PINDORETAMA", "nome_secretario": "Maria Joziana Costa Camara", "email": "jozianac@gmail.com", "regiao_saude": "22ª REGIÃO CASCAVEL", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "PIQUET CARNEIRO", "nome_secretario": "Francisco Sarmento do Vale", "email": "sarmentovale@gmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 8, "vagas_desocupadas": 1, "total_vagas": 9}, {"municipio": "PIRES FERREIRA", "nome_secretario": "Andreza Cipriano Coelho", "email": "andrezacipriano32@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 5, "vagas_desocupadas": 0, "total_vagas": 5}, {"municipio": "PORANGA", "nome_secretario": "Isadora Macedo Lima da Assunção", "email": "isadoramlassuncao@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 5, "vagas_desocupadas": 1, "total_vagas": 6}, {"municipio": "PORTEIRAS", "nome_secretario": "Maria JamilyTavares Leal", "email": "jamilyenf@gmail.com", "regiao_saude": "19ª REGIÃO BREJO SANTO", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "POTENGI", "nome_secretario": "Mykaella Maria da Silva Nunes", "email": "myyykaellanunes98@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 0, "vagas_desocupadas": 2, "total_vagas": 2}, {"municipio": "POTIRETAMA", "nome_secretario": "Israel Vieira Campelo", "email": "israellvc@hotmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 2, "vagas_desocupadas": 1, "total_vagas": 3}, {"municipio": "QUITERIANOPOLIS", "nome_secretario": "Joelma Machado Oliveira", "email": "joelmamachado2612@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 9, "vagas_desocupadas": 1, "total_vagas": 10}, {"municipio": "QUIXADÁ", "nome_secretario": "Rilson Sousa de Andrade", "email": "rilsonsa@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 13, "vagas_desocupadas": 2, "total_vagas": 15}, {"municipio": "QUIXELÔ", "nome_secretario": "Ana Larissa Carvalho de Oliveira", "email": "larissa_carvalho29@hotmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 5, "vagas_desocupadas": 1, "total_vagas": 6}, {"municipio": "QUIXERAMOBIM", "nome_secretario": "Ana Claudia Pimenta Felicio Saldanha", "email": "anaclaudiafmit@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 19, "vagas_desocupadas": 1, "total_vagas": 20}, {"municipio": "QUIXERÉ", "nome_secretario": "Socorro Emanuela Nery Duarte Rodrigues", "email": "nerymanus4@gmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 8, "vagas_desocupadas": 0, "total_vagas": 8}, {"municipio": "REDENÇÃO", "nome_secretario": "Maria Adamir Ramos Costa", "email": "maria.adamir@icloud.com", "regiao_saude": "3ª REGIÃO MARACANAU", "medicos_ativos": 7, "vagas_desocupadas": 3, "total_vagas": 10}, {"municipio": "RERIUTABA", "nome_secretario": "Karine Martins Nobre", "email": "karine.mn@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 8, "vagas_desocupadas": 1, "total_vagas": 9}, {"municipio": "RUSSAS", "nome_secretario": "Ana Kelly Leitão de Castro", "email": "kellyncastro1@hotmail.com", "regiao_saude": "9ª REGIÃO RUSSAS", "medicos_ativos": 9, "vagas_desocupadas": 6, "total_vagas": 15}, {"municipio": "SABOEIRO", "nome_secretario": "Romerito Alcântara Santos de Araújo", "email": "romer.alcantara@hotmail.com", "regiao_saude": "18ª REGIÃO IGUATU", "medicos_ativos": 4, "vagas_desocupadas": 0, "total_vagas": 4}, {"municipio": "SALITRE", "nome_secretario": "Carlos Antônio de Souza Junior", "email": "carlosjuniorsaude2025@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 1, "vagas_desocupadas": 0, "total_vagas": 1}, {"municipio": "SANTA QUITERIA", "nome_secretario": "Ana Patricia Sousa Ximenes", "email": "patricia_ximenes_@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 16, "vagas_desocupadas": 0, "total_vagas": 16}, {"municipio": "SANTANA DO ACARAU", "nome_secretario": "Daniela Sandra Rego Queiroz", "email": "danielasrg@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 10, "vagas_desocupadas": 1, "total_vagas": 11}, {"municipio": "SANTANA DO CARIRI", "nome_secretario": "Maria Robervania Alves Feitosa", "email": "saudesantanadocariri@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 3, "vagas_desocupadas": 1, "total_vagas": 4}, {"municipio": "SÃO BENEDITO", "nome_secretario": "Francisco Igor Vale do Nascimento", "email": "igorenf16@gmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 13, "vagas_desocupadas": 2, "total_vagas": 15}, {"municipio": "SÃO GONÇALO DO AMARANTE", "nome_secretario": "Francisca Márcia Porfirio de Sousa", "email": "mporfirio6@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 12, "vagas_desocupadas": 7, "total_vagas": 19}, {"municipio": "SÃO JOÃO DO JAGUARIBE", "nome_secretario": "Alana Patricia Fernandes Oliveira", "email": "alanapfoliveira@gmail.com", "regiao_saude": "", "medicos_ativos": 0, "vagas_desocupadas": 0, "total_vagas": 0}, {"municipio": "SÃO LUÍS DO CURU", "nome_secretario": "Francisco Fabricio Marques Gomes", "email": "fabriciomarques.pregoeiro@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 5, "vagas_desocupadas": 1, "total_vagas": 6}, {"municipio": "SENADOR POMPEU", "nome_secretario": "Lucia Cavalcante Silva", "email": "luargoncalves1@hotmail.con", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 10, "vagas_desocupadas": 2, "total_vagas": 12}, {"municipio": "SENADOR SÁ", "nome_secretario": "Janaina Babyla Sampaio de Sousa", "email": "janainababyladados@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "SOBRAL", "nome_secretario": "Francimones Rolim de Albuquerque", "email": "francimonesenfa@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 24, "vagas_desocupadas": 3, "total_vagas": 27}, {"municipio": "SOLONÓPOLE", "nome_secretario": "Francisca Ambrosina Nogueira de Oliveira", "email": "ambrosina.nogueira@hotmail.com", "regiao_saude": "8ª REGIÃO QUIXADA", "medicos_ativos": 3, "vagas_desocupadas": 1, "total_vagas": 4}, {"municipio": "TABULEIRO DO NORTE", "nome_secretario": "Ruth Edwiges de Lima Bizerra", "email": "ruthlimapsi@gmail.com", "regiao_saude": "10ª REGIÃO LIMOEIRO DO NORTE", "medicos_ativos": 3, "vagas_desocupadas": 1, "total_vagas": 4}, {"municipio": "TAMBORIL", "nome_secretario": "Cicera Erica Nascimento Santana", "email": "ericasecsaudetamboril@gmail.com", "regiao_saude": "15ª REGIÃO CRATEUS", "medicos_ativos": 14, "vagas_desocupadas": 1, "total_vagas": 15}, {"municipio": "TARRAFAS", "nome_secretario": "Anna Ágatta dos Santos Venancio", "email": "annnaagatta07@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "TAUÁ", "nome_secretario": "Sayonara Moura de Oliveira Cidade", "email": "smcidade@yahoo.com.br", "regiao_saude": "14ª REGIÃO TAUA", "medicos_ativos": 17, "vagas_desocupadas": 0, "total_vagas": 17}, {"municipio": "TEJUÇUOCA", "nome_secretario": "Roberta Azevedo Vidal", "email": "robertinha.vidal04@gmail.com", "regiao_saude": "2ª REGIÃO CAUCAIA", "medicos_ativos": 7, "vagas_desocupadas": 1, "total_vagas": 8}, {"municipio": "TIANGUA", "nome_secretario": "Flavia Araújo Cadoso Procópio", "email": "flaviaprocopio01@gmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 14, "vagas_desocupadas": 1, "total_vagas": 15}, {"municipio": "TRAIRI", "nome_secretario": "Ana Cândida Pinto de Sousa", "email": "anacandidapintodesousa@gmail.com", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 24, "vagas_desocupadas": 2, "total_vagas": 26}, {"municipio": "TURURU", "nome_secretario": "Vania Maria Nunes Chaves", "email": "vanianchaves@gmail.com", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 7, "vagas_desocupadas": 1, "total_vagas": 8}, {"municipio": "UBAJARA", "nome_secretario": "Grijalva Parente de Costa", "email": "grijalvapc@hotmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 10, "vagas_desocupadas": 2, "total_vagas": 12}, {"municipio": "UMARI", "nome_secretario": "Josué Grangeiro Barros", "email": "novagestãosec.saude@gmail.com", "regiao_saude": "17ª REGIÃO ICO", "medicos_ativos": 3, "vagas_desocupadas": 0, "total_vagas": 3}, {"municipio": "UMIRIM", "nome_secretario": "Jose Afranio Pinho Pinheiro Junior", "email": "afraniopjr@gmail.com", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 6, "vagas_desocupadas": 0, "total_vagas": 6}, {"municipio": "URUBURETAMA", "nome_secretario": "Maria Adriana Marquês de Sousa", "email": "adrianna_spp@hotmail.com", "regiao_saude": "6ª REGIÃO ITAPIPOCA", "medicos_ativos": 10, "vagas_desocupadas": 1, "total_vagas": 11}, {"municipio": "URUOCA", "nome_secretario": "Antonia Gracilene de Aguiar Oliveira", "email": "secsaudegracileneaguiar@gmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 7, "vagas_desocupadas": 0, "total_vagas": 7}, {"municipio": "VARJOTA", "nome_secretario": "Antunino Martins Ferreira Neto", "email": "antuninomartinsja@hotmail.com", "regiao_saude": "11ª REGIÃO SOBRAL", "medicos_ativos": 2, "vagas_desocupadas": 1, "total_vagas": 3}, {"municipio": "VÁRZEA ALEGRE", "nome_secretario": "Ivo de Oliveira Leal", "email": "ivoleal1@gmail.com", "regiao_saude": "20ª REGIÃO CRATO", "medicos_ativos": 11, "vagas_desocupadas": 1, "total_vagas": 12}, {"municipio": "VIÇOSA DO CEARÁ", "nome_secretario": "Fátima Cintya Sá Pitombeira da Cunha", "email": "cintyacunha70@gmail.com", "regiao_saude": "13ª REGIÃO TIANGUA", "medicos_ativos": 19, "vagas_desocupadas": 0, "total_vagas": 19}];
+
+async function loadSecretarios() {
+  const tbody = document.getElementById('secretariosTableBody');
+  if (!tbody) return;
+
+  try {
+    let data = null;
+    if (supabaseClient) {
+      try {
+        const res = await supabaseClient
+          .from('secretarios')
+          .select('*')
+          .order('municipio', { ascending: true });
+        if (!res.error && res.data && res.data.length > 0) {
+          data = res.data;
+        }
+      } catch (e) {
+        console.warn('Tentando carregar secretários do Supabase falhou, usando dados locais:', e);
+      }
+    }
+
+    // Se não veio do Supabase ainda, usa base local completa de 184 secretários
+    window.secretariosData = (data && data.length > 0) ? data : SECRETARIOS_EMBEDDED_DATA;
+    window.currentFilteredSecretarios = window.secretariosData;
+
+    populateSecretarioFilters(window.secretariosData);
+    setupSecretarioFilters();
+    renderSecretariosTable(window.secretariosData);
+
+  } catch (err) {
+    console.error('Erro ao carregar secretários:', err);
+    window.secretariosData = SECRETARIOS_EMBEDDED_DATA;
+    window.currentFilteredSecretarios = window.secretariosData;
+    renderSecretariosTable(window.secretariosData);
+  }
+}
+
+function populateSecretarioFilters(data) {
+  const selRegiao = document.getElementById('filterSecretarioRegiao');
+  if (!selRegiao || !data) return;
+
+  const currentVal = selRegiao.value;
+  const regioes = new Set();
+  data.forEach(s => {
+    if (s.regiao_saude && s.regiao_saude.trim()) {
+      regioes.add(s.regiao_saude.trim());
+    }
+  });
+
+  const sorted = Array.from(regioes).sort();
+  selRegiao.innerHTML = '<option value="">Todas as Regiões de Saúde</option>' +
+    sorted.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
+
+  if (currentVal && regioes.has(currentVal)) selRegiao.value = currentVal;
+}
+
+function setupSecretarioFilters() {
+  const searchInput = document.getElementById('searchSecretario');
+  const selRegiao = document.getElementById('filterSecretarioRegiao');
+  const selVagas = document.getElementById('filterSecretarioVagas');
+  const btnLimpar = document.getElementById('btnLimparFiltrosSecretarios');
+  const btnRefresh = document.getElementById('btnRefreshSecretarios');
+  const btnExport = document.getElementById('btnExportSecretarios');
+
+  if (searchInput && !searchInput.dataset.listening) {
+    searchInput.dataset.listening = 'true';
+    searchInput.addEventListener('input', filterSecretarios);
+  }
+  if (selRegiao && !selRegiao.dataset.listening) {
+    selRegiao.dataset.listening = 'true';
+    selRegiao.addEventListener('change', filterSecretarios);
+  }
+  if (selVagas && !selVagas.dataset.listening) {
+    selVagas.dataset.listening = 'true';
+    selVagas.addEventListener('change', filterSecretarios);
+  }
+  if (btnLimpar && !btnLimpar.dataset.listening) {
+    btnLimpar.dataset.listening = 'true';
+    btnLimpar.addEventListener('click', limparFiltrosSecretarios);
+  }
+  if (btnRefresh && !btnRefresh.dataset.listening) {
+    btnRefresh.dataset.listening = 'true';
+    btnRefresh.addEventListener('click', () => {
+      loadSecretarios();
+      if (typeof showAlert === 'function') showAlert('Lista de secretários atualizada!', 'success');
+    });
+  }
+  if (btnExport && !btnExport.dataset.listening) {
+    btnExport.dataset.listening = 'true';
+    btnExport.addEventListener('click', exportarSecretariosCSV);
+  }
+}
+
+function filterSecretarios() {
+  if (!window.secretariosData) return;
+
+  const searchVal = normStr(document.getElementById('searchSecretario')?.value);
+  const regVal = normStr(document.getElementById('filterSecretarioRegiao')?.value);
+  const vagasVal = document.getElementById('filterSecretarioVagas')?.value || '';
+
+  const filtered = window.secretariosData.filter(s => {
+    // 1. Busca geral (município, nome do secretário, e-mail)
+    if (searchVal) {
+      const mun = normStr(s.municipio);
+      const nome = normStr(s.nome_secretario);
+      const email = normStr(s.email);
+      if (!mun.includes(searchVal) && !nome.includes(searchVal) && !email.includes(searchVal)) {
+        return false;
+      }
+    }
+
+    // 2. Região de Saúde
+    if (regVal) {
+      const reg = normStr(s.regiao_saude);
+      if (!reg.includes(regVal)) return false;
+    }
+
+    // 3. Vagas Desocupadas
+    if (vagasVal === 'com_vagas') {
+      if ((s.vagas_desocupadas || 0) <= 0) return false;
+    } else if (vagasVal === 'sem_vagas') {
+      if ((s.vagas_desocupadas || 0) > 0) return false;
+    }
+
+    return true;
+  });
+
+  window.currentFilteredSecretarios = filtered;
+  renderSecretariosTable(filtered);
+}
+
+function limparFiltrosSecretarios() {
+  const searchInput = document.getElementById('searchSecretario');
+  const selRegiao = document.getElementById('filterSecretarioRegiao');
+  const selVagas = document.getElementById('filterSecretarioVagas');
+
+  if (searchInput) searchInput.value = '';
+  if (selRegiao) selRegiao.value = '';
+  if (selVagas) selVagas.value = '';
+
+  filterSecretarios();
+}
+
+function renderSecretariosTable(data) {
+  const tbody = document.getElementById('secretariosTableBody');
+  const countBadge = document.getElementById('secretariosCountBadge');
+  if (!tbody) return;
+
+  if (countBadge) {
+    const total = (window.secretariosData || []).length;
+    countBadge.textContent = `${data.length} de ${total} municípios`;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center; padding:3.5rem 1rem;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
+            <i class="fas fa-search" style="font-size:2rem; color:var(--text-muted); opacity:0.5;"></i>
+            <div style="font-weight:600; color:var(--text-primary); font-size:1rem;">Nenhum secretário ou município encontrado</div>
+            <div style="font-size:0.85rem; color:var(--text-muted); max-width:350px;">Tente ajustar ou limpar os filtros de busca pesquisados.</div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:0.5rem; border:1px solid var(--border);" onclick="limparFiltrosSecretarios()">
+              <i class="fas fa-undo" style="margin-right:0.35rem;"></i> Limpar Filtros
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = '';
+
+  data.forEach(s => {
+    const tr = document.createElement('tr');
+
+    const mun = escapeHTML(s.municipio || '-');
+    const nome = escapeHTML(s.nome_secretario || 'Não informado');
+    const email = s.email ? escapeHTML(s.email) : '-';
+    const regiao = s.regiao_saude ? `<span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:2px;">${escapeHTML(s.regiao_saude)}</span>` : '';
+    const ativos = s.medicos_ativos || 0;
+    const desoc = s.vagas_desocupadas || 0;
+
+    let emailCol = '-';
+    if (s.email) {
+      const firstEmail = s.email.split('/')[0].trim();
+      emailCol = `
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <a href="mailto:${escapeHTML(firstEmail)}" style="color:var(--accent-secondary); text-decoration:none; font-size:0.85rem;" title="Enviar e-mail">
+            <i class="fas fa-envelope" style="margin-right:4px;"></i>${email}
+          </a>
+          <button class="btn btn-ghost btn-sm" style="padding:0.2rem 0.4rem; font-size:0.7rem;" title="Copiar e-mail" onclick="navigator.clipboard.writeText('${escapeHTML(s.email)}'); if(typeof showAlert==='function') showAlert('E-mail copiado!','success');">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    let badgeDesoc = `<span class="badge badge-approved" style="font-size:0.75rem;">0</span>`;
+    if (desoc > 0) {
+      badgeDesoc = `<span class="badge badge-rejected" style="font-size:0.75rem;">${desoc} ${desoc === 1 ? 'vaga' : 'vagas'}</span>`;
+    }
+
+    tr.innerHTML = `
+      <td>
+        <strong style="color:var(--text-primary); font-size:0.92rem;">${mun}</strong>
+        ${regiao}
+      </td>
+      <td>
+        <div style="font-weight:500; color:var(--text-primary); font-size:0.9rem;">${nome}</div>
+        <div style="font-size:0.75rem; color:var(--accent-primary); margin-top:1px;">Secretário(a) Municipal de Saúde</div>
+      </td>
+      <td>${emailCol}</td>
+      <td style="text-align:center;">
+        <span class="badge badge-primary" style="font-size:0.75rem;">${ativos} ${ativos === 1 ? 'médico' : 'médicos'}</span>
+      </td>
+      <td style="text-align:center;">${badgeDesoc}</td>
+      <td style="text-align:center;">
+        <button class="btn btn-ghost btn-sm" style="border:1px solid var(--border); font-size:0.78rem;" onclick="verMedicosDoMunicipio('${escapeHTML(s.municipio)}')">
+          <i class="fas fa-user-md" style="margin-right:0.3rem; color:var(--accent-primary)"></i> Ver Médicos
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Navegação rápida: abre a aba de médicos já filtrada para o município
+window.verMedicosDoMunicipio = function(municipio) {
+  if (!municipio) return;
+
+  if (typeof navigateToRoute === 'function') {
+    navigateToRoute('medicos');
+  } else {
+    const navMed = document.getElementById('navMedicos');
+    if (navMed) navMed.click();
+  }
+
+  setTimeout(() => {
+    const cityInput = document.getElementById('searchMedicoCity');
+    if (cityInput) {
+      cityInput.value = municipio;
+      if (typeof filterMedicos === 'function') {
+        filterMedicos();
+      }
+    }
+  }, 150);
+};
+
+function exportarSecretariosCSV() {
+  const data = window.currentFilteredSecretarios || window.secretariosData || [];
+  if (data.length === 0) {
+    if (typeof showAlert === 'function') showAlert('Nenhum dado para exportar.', 'error');
+    return;
+  }
+
+  const headers = ['Município', 'Secretário(a) de Saúde', 'E-mail', 'Região de Saúde', 'Médicos Ativos', 'Vagas Desocupadas', 'Total de Vagas'];
+  const rows = data.map(s => [
+    `"${(s.municipio || '').replace(/"/g, '""')}"`,
+    `"${(s.nome_secretario || '').replace(/"/g, '""')}"`,
+    `"${(s.email || '').replace(/"/g, '""')}"`,
+    `"${(s.regiao_saude || '').replace(/"/g, '""')}"`,
+    s.medicos_ativos || 0,
+    s.vagas_desocupadas || 0,
+    s.total_vagas || 0
+  ]);
+
+  const csvContent = "\uFEFF" + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `secretarios_saude_ceara_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}

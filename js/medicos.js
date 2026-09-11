@@ -42,7 +42,7 @@ async function loadMedicos() {
   try {
     const { data: medicos, error } = await supabaseClient
       .from('doctors')
-      .select('id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao, instituicao, tutor, supervisor, cpf')
+      .select('id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao, instituicao, tutor, supervisor, cpf, secretario_saude, email_secretario')
       .order('nome_profissional', { ascending: true });
 
     if (error) throw error;
@@ -105,6 +105,7 @@ function renderMedicosTable(data) {
           <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(m.perfil_profissional || '-')}</div>
           ${m.instituicao ? `<div style="font-size:0.75rem; color:var(--accent-primary); margin-top:3px; display:flex; align-items:center; gap:4px;"><i class="fas fa-university" style="font-size:0.7rem"></i> ${escapeHTML(m.instituicao)}</div>` : ''}
           ${m.supervisor ? `<div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;"><span style="color:var(--text-muted)">Sup:</span> ${escapeHTML(m.supervisor)}${m.tutor ? ` <span style="color:var(--text-muted); margin:0 3px;">•</span> <span style="color:var(--text-muted)">Tut:</span> ${escapeHTML(m.tutor)}` : ''}</div>` : ''}
+          ${m.secretario_saude ? `<div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;"><i class="fas fa-hospital-user" style="font-size:0.7rem; color:var(--accent-warning); margin-right:3px;"></i><span style="color:var(--text-muted)">Sec:</span> ${escapeHTML(m.secretario_saude)}</div>` : ''}
         </td>
         <td>${statusBadge}${isInativa ? '<div style="font-size:0.7rem;color:var(--accent-danger);margin-top:2px">INATIVA</div>' : ''}</td>
         <td>
@@ -176,6 +177,7 @@ function setupMedicoFilters() {
     'filterMedicoInstituicao',
     'filterMedicoTutor',
     'searchMedicoSupervisor',
+    'searchMedicoSecretario',
     'filterMedicoEixo',
     'filterMedicoGestao'
   ];
@@ -242,6 +244,13 @@ function filterMedicos() {
     if (supVal) {
       const mSup = normStr(m.supervisor);
       if (!mSup.includes(supVal)) return false;
+    }
+
+    // 5.1 Secretário de Saúde
+    const secVal = normStr(document.getElementById('searchMedicoSecretario')?.value);
+    if (secVal) {
+      const mSec = normStr(m.secretario_saude);
+      if (!mSec.includes(secVal)) return false;
     }
 
     // 6. Eixo da Vaga
@@ -352,6 +361,15 @@ async function viewMedicoDetails(id) {
             <div><span style="color: var(--text-muted);">Instituição:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.instituicao || 'Não vinculado')}</strong></div>
             <div><span style="color: var(--text-muted);">Supervisor:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.supervisor || 'Não informado')}</strong></div>
             <div><span style="color: var(--text-muted);">Tutor:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.tutor || 'Não informado')}</strong></div>
+          </div>
+        </div>
+        <div class="detail-group" style="grid-column: 1 / -1; background: rgba(6,182,212,0.06); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid rgba(6,182,212,0.18);">
+          <div style="font-weight: 700; color: var(--accent-secondary); font-size: 0.85rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i class="fas fa-hospital-user"></i> Gestão Municipal de Saúde (SMS)
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.5rem; font-size: 0.85rem;">
+            <div><span style="color: var(--text-muted);">Secretário(a):</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.secretario_saude || 'Não informado')}</strong></div>
+            <div><span style="color: var(--text-muted);">E-mail / Contato:</span> <strong style="color: var(--text-primary);">${medico.email_secretario ? `<a href="mailto:${escapeHTML(medico.email_secretario)}" style="color:var(--accent-secondary); text-decoration:underline;"><i class="fas fa-envelope" style="margin-right:4px;"></i>${escapeHTML(medico.email_secretario)}</a>` : 'Não informado'}</strong></div>
           </div>
         </div>
         <div class="detail-group"><div class="detail-label">CPF</div><div class="detail-value">${maskCPF(medico.cpf)}</div></div>
