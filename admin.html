@@ -8,7 +8,7 @@
   <meta name="description" content="Painel de Administração">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=28">
+  <link rel="stylesheet" href="css/style.css?v=29">
 </head>
 <body style="display: none;">
   <div class="admin-layout">
@@ -742,6 +742,77 @@
 
         
         <!-- ========================================== -->
+        <!-- SEÇÃO: SECRETÁRIOS MUNICIPAIS DE SAÚDE -->
+        <!-- ========================================== -->
+        <div id="sectionSecretarios" class="section">
+          <!-- Filtros de Secretários -->
+          <div class="table-card" style="margin-bottom: 1.5rem;">
+            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fas fa-filter" style="color: var(--accent-warning)"></i> Filtros de Secretários de Saúde
+                </span>
+                <button class="btn btn-ghost btn-sm" id="btnLimparFiltrosSecretarios" style="font-size: 0.8rem;">
+                  <i class="fas fa-undo"></i> Limpar Filtros
+                </button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+                <div class="input-wrapper" style="width: 100%;">
+                  <input type="text" id="searchSecretario" placeholder="Buscar por secretário, município ou e-mail..." style="width: 100%;">
+                  <i class="fas fa-search"></i>
+                </div>
+                <div>
+                  <select id="filterSecretarioRegiao" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="" style="background: #0b2236; color: #fff;">Todas as Regiões de Saúde</option>
+                  </select>
+                </div>
+                <div>
+                  <select id="filterSecretarioVagas" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="" style="background: #0b2236; color: #fff;">Todos os Municípios</option>
+                    <option value="com_vagas" style="background: #0b2236; color: #fff;">Com Vagas Abertas (Desocupadas)</option>
+                    <option value="sem_vagas" style="background: #0b2236; color: #fff;">100% Ocupados (Sem Vagas Abertas)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Secretários -->
+          <div class="table-card">
+            <div class="table-header">
+              <h3><i class="fas fa-hospital-user" style="margin-right:0.5rem; color:var(--accent-warning)"></i> Secretários Municipais de Saúde (Ceará)</h3>
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <span id="secretariosCountBadge" style="font-size:0.78rem; color:var(--text-muted); margin-right:0.5rem;"></span>
+                <button class="btn btn-primary btn-sm" id="btnExportSecretarios" title="Exportar dados filtrados para CSV">
+                  <i class="fas fa-file-export"></i> Exportar CSV
+                </button>
+                <button class="btn btn-ghost btn-sm" id="btnRefreshSecretarios">
+                  <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+              </div>
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Município / Região</th>
+                    <th>Secretário(a) de Saúde</th>
+                    <th>E-mail / Contato</th>
+                    <th style="text-align:center;">Médicos Ativos</th>
+                    <th style="text-align:center;">Vagas Abertas</th>
+                    <th style="text-align:center;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="secretariosTableBody">
+                  <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:3rem">Carregando secretários...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
         <!-- SEÇÃO: PROCESSOS ADMINISTRATIVOS -->
         <!-- ========================================== -->
 
@@ -1173,22 +1244,22 @@
 
   <!-- Configuração e Autenticação -->
   <script src="js/config.js"></script>
-  <script src="js/auth.js?v=28"></script>
+  <script src="js/auth.js?v=29"></script>
 
   <!-- Módulos da Aplicação Gestão CCE -->
   <script src="js/utils.js?v=5"></script>
-  <script src="js/medicos.js?v=28"></script>
-  <script src="js/dashboard.js?v=28"></script>
-  <script src="js/referencias.js?v=28"></script>
-  <script src="js/supervisores.js?v=28"></script>
-  <script src="js/tutores.js?v=28"></script>
-  <script src="js/materiais.js?v=28"></script>
-  <script src="js/secretarios.js?v=28"></script>
-  <script src="js/processos.js?v=28"></script>
-  <script src="js/users.js?v=28"></script>
+  <script src="js/medicos.js?v=29"></script>
+  <script src="js/dashboard.js?v=29"></script>
+  <script src="js/referencias.js?v=29"></script>
+  <script src="js/supervisores.js?v=29"></script>
+  <script src="js/tutores.js?v=29"></script>
+  <script src="js/materiais.js?v=29"></script>
+  <script src="js/secretarios.js?v=29"></script>
+  <script src="js/processos.js?v=29"></script>
+  <script src="js/users.js?v=29"></script>
 
   <!-- Orquestrador Principal -->
-  <script src="js/admin.js?v=28"></script>
+  <script src="js/admin.js?v=29"></script>
   <script src="js/magic-bento.js?v=3"></script>
 </body>
 </html>
