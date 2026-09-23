@@ -205,12 +205,6 @@ function setupCCEListeners() {
     btnToggleCards.dataset.listening = 'true';
     btnToggleCards.addEventListener('click', () => {
       cceViewMode = 'cards';
-      btnToggleCards.classList.add('btn-primary');
-      btnToggleCards.classList.remove('btn-ghost');
-      if (btnToggleTable) {
-        btnToggleTable.classList.remove('btn-primary');
-        btnToggleTable.classList.add('btn-ghost');
-      }
       renderCCEMembrosView();
     });
   }
@@ -219,12 +213,6 @@ function setupCCEListeners() {
     btnToggleTable.dataset.listening = 'true';
     btnToggleTable.addEventListener('click', () => {
       cceViewMode = 'table';
-      btnToggleTable.classList.add('btn-primary');
-      btnToggleTable.classList.remove('btn-ghost');
-      if (btnToggleCards) {
-        btnToggleCards.classList.remove('btn-primary');
-        btnToggleCards.classList.add('btn-ghost');
-      }
       renderCCEMembrosView();
     });
   }
@@ -289,8 +277,11 @@ function renderCCEMembrosView() {
   const containerTable = document.getElementById('cceTableContainer');
   const data = window.currentFilteredCCE || [];
 
+  document.getElementById('btnCCEViewCards')?.classList.toggle('on', cceViewMode === 'cards');
+  document.getElementById('btnCCEViewTable')?.classList.toggle('on', cceViewMode === 'table');
+
   if (cceViewMode === 'cards') {
-    if (containerCards) containerCards.style.display = 'grid';
+    if (containerCards) containerCards.style.display = 'block';
     if (containerTable) containerTable.style.display = 'none';
     renderCCECards(data);
   } else {
@@ -300,111 +291,47 @@ function renderCCEMembrosView() {
   }
 }
 
+function cceContact(m) {
+  const cleanPhone = (m.telefone || '').replace(/\D/g, '');
+  const firstPhone = cleanPhone.slice(0, 11);
+  return `<div class="contact-line">
+      <a href="mailto:${escapeHTML(m.email)}">${escapeHTML(m.email)}</a>
+      <button class="icon-btn" title="Copiar e-mail" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(m.email)}')); showToast('E-mail copiado', 'success')"><i class="fas fa-copy"></i></button>
+      <span class="muted">${escapeHTML(m.telefone || '')}</span>
+      ${firstPhone ? `<a href="https://wa.me/55${firstPhone}" target="_blank" rel="noopener noreferrer" title="Conversar no WhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</a>` : ''}
+    </div>`;
+}
+
 function renderCCECards(data) {
   const container = document.getElementById('cceCardsContainer');
   if (!container) return;
 
   if (data.length === 0) {
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);">
-        <i class="fas fa-search" style="font-size: 2rem; opacity: 0.5; margin-bottom: 0.5rem; display: block;"></i>
-        <div style="font-weight: 600; color: var(--text-primary); font-size: 1rem;">Nenhum membro encontrado</div>
-        <div style="font-size: 0.85rem;">Tente ajustar ou limpar os filtros de busca.</div>
-      </div>
-    `;
+    container.innerHTML = '<div class="empty-state"><b>Nenhum membro encontrado</b>Ajuste ou limpe os filtros.</div>';
     return;
   }
 
   // Agrupar por órgão
   const grupos = {};
-  data.forEach(m => {
-    if (!grupos[m.orgao_grupo]) grupos[m.orgao_grupo] = [];
-    grupos[m.orgao_grupo].push(m);
-  });
+  data.forEach(m => { (grupos[m.orgao_grupo] = grupos[m.orgao_grupo] || []).push(m); });
 
-  let html = '';
-  for (const [orgao, membros] of Object.entries(grupos)) {
-    const icone = membros[0]?.icone || 'fa-landmark';
-
-    html += `
-      <div class="cce-group-card fade-in" style="background: var(--glass-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: var(--shadow-sm);">
-        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
-          <div style="display: flex; align-items: center; gap: 0.65rem;">
-            <div style="width: 38px; height: 38px; border-radius: var(--radius-md); background: rgba(124, 58, 237, 0.12); color: var(--accent-primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-              <i class="fas ${icone}"></i>
-            </div>
-            <div>
-              <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0;">${escapeHTML(orgao)}</h4>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Representação Institucional na CCE</span>
-            </div>
+  container.innerHTML = Object.entries(grupos).map(([orgao, membros]) => `
+    <div class="org">
+      <div><div style="font-weight:600">${escapeHTML(orgao)}</div><div class="hint">${plural(membros.length, 'membro', 'membros')}</div></div>
+      <div class="people">${membros.map(m => `
+        <div>
+          <div>
+            <div class="cell-main">${escapeHTML(m.nome)}</div>
+            <div class="cell-sub">${escapeHTML(m.cargo)} · ${escapeHTML(m.instituicao)}</div>
+            ${cceContact(m)}
           </div>
-          <span class="badge badge-info" style="font-size: 0.75rem;">${membros.length} ${membros.length === 1 ? 'membro' : 'membros'}</span>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-          ${membros.map(m => {
-            const isTitular = m.tipo === 'TITULAR';
-            const badgeClass = isTitular ? 'badge-approved' : 'badge-pending';
-            const bordaDestaque = m.destaque ? 'border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.03);' : 'border: 1px solid var(--border); background: rgba(255, 255, 255, 0.02);';
-            const cleanPhone = (m.telefone || '').replace(/\D/g, '');
-
-            return `
-              <div style="${bordaDestaque} border-radius: var(--radius-md); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.65rem;">
-                <div>
-                  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem;">
-                    <div>
-                      <span class="badge ${badgeClass}" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em;">${m.tipo}</span>
-                      ${m.destaque ? '<span class="badge badge-primary" style="font-size: 0.68rem; margin-left: 4px;"><i class="fas fa-crown" style="font-size:0.6rem; margin-right:3px;"></i>Coord. CCE</span>' : ''}
-                    </div>
-                  </div>
-                  
-                  <div style="font-weight: 700; color: var(--text-primary); font-size: 0.98rem; line-height: 1.3;">
-                    ${escapeHTML(m.nome)}
-                  </div>
-                  
-                  <div style="font-size: 0.8rem; color: var(--accent-primary); font-weight: 500; margin-top: 3px;">
-                    ${escapeHTML(m.cargo)}
-                  </div>
-                  
-                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
-                    ${escapeHTML(m.instituicao)}
-                  </div>
-                </div>
-
-                <div style="border-top: 1px solid var(--border); padding-top: 0.65rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.82rem;">
-                  <!-- E-mail -->
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                    <a href="mailto:${escapeHTML(m.email)}" style="color: var(--accent-secondary); text-decoration: none; display: flex; align-items: center; gap: 0.4rem; word-break: break-all;" title="Enviar e-mail">
-                      <i class="fas fa-envelope" style="font-size: 0.78rem;"></i>
-                      <span>${escapeHTML(m.email)}</span>
-                    </a>
-                    <button class="btn btn-ghost btn-sm" style="padding: 0.15rem 0.35rem; font-size: 0.7rem;" title="Copiar E-mail" onclick="navigator.clipboard.writeText('${escapeHTML(m.email)}'); if(typeof showAlert==='function') showAlert('E-mail copiado!','success');">
-                      <i class="fas fa-copy"></i>
-                    </button>
-                  </div>
-
-                  <!-- Telefone -->
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                    <div style="color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem;">
-                      <i class="fas fa-phone" style="font-size: 0.78rem; color: var(--text-muted);"></i>
-                      <span>${escapeHTML(m.telefone)}</span>
-                    </div>
-                    ${cleanPhone ? `
-                      <a href="https://wa.me/55${cleanPhone}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm" style="padding: 0.15rem 0.45rem; font-size: 0.75rem; color: #22c55e;" title="Conversar no WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                      </a>
-                    ` : ''}
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            ${m.destaque ? '<span class="tag ok">Coordenação</span>' : ''}
+            <span class="tag ${m.tipo === 'TITULAR' ? 'info' : 'plain'}">${m.tipo === 'TITULAR' ? 'Titular' : 'Suplente'}</span>
+          </div>
+        </div>`).join('')}
       </div>
-    `;
-  }
-
-  container.innerHTML = html;
+    </div>`).join('');
 }
 
 function renderCCETable(data) {
@@ -412,62 +339,21 @@ function renderCCETable(data) {
   if (!tbody) return;
 
   if (data.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; padding: 3rem 1rem; color: var(--text-muted);">
-          Nenhum membro encontrado para os filtros selecionados.
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = emptyRow(6, 'Nenhum membro encontrado para os filtros selecionados.', '');
     return;
   }
 
   tbody.innerHTML = data.map(m => {
-    const isTitular = m.tipo === 'TITULAR';
-    const badgeClass = isTitular ? 'badge-approved' : 'badge-pending';
-    const cleanPhone = (m.telefone || '').replace(/\D/g, '');
-
-    return `
-      <tr>
-        <td>
-          <span class="badge ${badgeClass}" style="font-size: 0.72rem; font-weight: 700;">${m.tipo}</span>
-          ${m.destaque ? '<span class="badge badge-primary" style="font-size: 0.65rem; margin-left: 3px;">Coord.</span>' : ''}
-        </td>
-        <td>
-          <strong style="color: var(--text-primary); font-size: 0.9rem;">${escapeHTML(m.nome)}</strong>
-          <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHTML(m.cargo)}</div>
-        </td>
-        <td>
-          <span style="font-weight: 500; color: var(--text-primary); font-size: 0.85rem;">${escapeHTML(m.orgao_grupo)}</span>
-          <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHTML(m.instituicao)}</div>
-        </td>
-        <td>
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <a href="mailto:${escapeHTML(m.email)}" style="color: var(--accent-secondary); text-decoration: none; font-size: 0.85rem;">
-              <i class="fas fa-envelope" style="margin-right: 3px;"></i>${escapeHTML(m.email)}
-            </a>
-            <button class="btn btn-ghost btn-sm" style="padding: 0.15rem 0.35rem; font-size: 0.7rem;" title="Copiar E-mail" onclick="navigator.clipboard.writeText('${escapeHTML(m.email)}'); if(typeof showAlert==='function') showAlert('E-mail copiado!','success');">
-              <i class="fas fa-copy"></i>
-            </button>
-          </div>
-        </td>
-        <td>
-          <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem;">
-            <span>${escapeHTML(m.telefone)}</span>
-            ${cleanPhone ? `
-              <a href="https://wa.me/55${cleanPhone}" target="_blank" rel="noopener noreferrer" style="color: #22c55e;" title="WhatsApp">
-                <i class="fab fa-whatsapp"></i>
-              </a>
-            ` : ''}
-          </div>
-        </td>
-        <td style="text-align: center;">
-          <button class="btn btn-ghost btn-sm" style="border: 1px solid var(--border); font-size: 0.75rem;" onclick="navigator.clipboard.writeText('${escapeHTML(m.nome)} - ${escapeHTML(m.cargo)} (${escapeHTML(m.orgao_grupo)}): ${escapeHTML(m.email)} / ${escapeHTML(m.telefone)}'); if(typeof showAlert==='function') showAlert('Dados do membro copiados!','success');">
-            <i class="fas fa-share-nodes" style="margin-right: 3px;"></i> Copiar Contato
-          </button>
-        </td>
-      </tr>
-    `;
+    const cleanPhone = (m.telefone || '').replace(/\D/g, '').slice(0, 11);
+    const resumo = `${m.nome} - ${m.cargo} (${m.orgao_grupo}): ${m.email} / ${m.telefone}`;
+    return `<tr>
+      <td><div class="cell-main">${escapeHTML(m.nome)}</div><div class="cell-sub">${escapeHTML(m.cargo)}</div></td>
+      <td>${escapeHTML(m.orgao_grupo)}<div class="cell-sub">${escapeHTML(m.instituicao)}</div></td>
+      <td><span class="tag ${m.tipo === 'TITULAR' ? 'info' : 'plain'}">${m.tipo === 'TITULAR' ? 'Titular' : 'Suplente'}</span>${m.destaque ? ' <span class="tag ok">Coord.</span>' : ''}</td>
+      <td><a href="mailto:${escapeHTML(m.email)}" style="text-decoration:none">${escapeHTML(m.email)}</a></td>
+      <td style="white-space:nowrap">${escapeHTML(m.telefone)}${cleanPhone ? ` <a href="https://wa.me/55${cleanPhone}" target="_blank" rel="noopener noreferrer" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ''}</td>
+      <td class="r"><button class="btn btn-sm" type="button" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(resumo)}')); showToast('Contato copiado', 'success')">Copiar contato</button></td>
+    </tr>`;
   }).join('');
 }
 

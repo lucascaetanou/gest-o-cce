@@ -15,6 +15,7 @@ async function fetchAllDoctors(selectCols) {
     const { data, error } = await supabaseClient
       .from('doctors')
       .select(cols)
+      .order('id', { ascending: true })
       .range(from, from + size - 1);
     
     if (error) {
@@ -36,141 +37,105 @@ async function fetchAllDoctors(selectCols) {
 async function loadMedicos() {
   const tbody = document.getElementById('medicosTableBody');
   if (!tbody) return;
-  
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 3rem;">Carregando médicos...</td></tr>';
+
+  tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">Carregando médicos…</td></tr>';
 
   try {
-    const { data: medicos, error } = await supabaseClient
-      .from('doctors')
-      .select('id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao, instituicao, tutor, supervisor, cpf, secretario_saude, email_secretario')
-      .order('nome_profissional', { ascending: true });
+    // Leitura paginada: o Supabase devolve no máximo 1.000 linhas por consulta
+    const cols = 'id, nome_profissional, perfil_profissional, status, ativo_inativo, municipio_atuacao, regiao_saude, status_prof_egestor, eixo_vaga, gestao, instituicao, tutor, supervisor, cpf, secretario_saude, email_secretario';
+    const pageSize = 1000;
+    let medicos = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabaseClient
+        .from('doctors')
+        .select(cols)
+        .order('nome_profissional', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      medicos = medicos.concat(data || []);
+      if (!data || data.length < pageSize) break;
+    }
 
-    if (error) throw error;
-
-    if (!medicos || medicos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 3rem;">Nenhum médico encontrado.</td></tr>';
+    if (!medicos.length) {
+      tbody.innerHTML = emptyRow(5, 'Nenhum médico encontrado.', '');
       return;
     }
 
-    tbody.innerHTML = '';
-    
     window.medicosData = medicos;
+    const ocupadas = medicos.filter(m => m.ativo_inativo !== 'INATIVA' && m.status === 'OCUPADA').length;
+    setNavCount('navCountMedicos', ocupadas);
+    const sub = document.getElementById('medicosSubtitle');
+    if (sub) sub.textContent = `${fmtNum(ocupadas)} médicos em atividade · ${fmtNum(medicos.length)} vagas cadastradas`;
+
     populateMedicoFilters(medicos);
-    renderMedicosTable(window.medicosData);
     setupMedicoFilters();
+    filterMedicos();
+    if (typeof window.refreshRegionReport === 'function') window.refreshRegionReport();
   } catch (error) {
     console.error(error);
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #ef4444; padding: 3rem;">Erro ao carregar médicos.</td></tr>';
+    tbody.innerHTML = emptyRow(5, 'Erro ao carregar médicos.', '');
   }
 }
 
 
 function renderMedicosTable(data) {
   const tbody = document.getElementById('medicosTableBody');
+  const foot = document.getElementById('medicosFoot');
   if (!tbody) return;
-  
+  if (foot) foot.textContent = `${fmtNum((data || []).length)} de ${fmtNum((window.medicosData || []).length)} vagas`;
+
   if (!data || data.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align:center; padding:3.5rem 1rem;">
-          <div style="max-width:320px; margin:0 auto; color:var(--text-muted);">
-            <i class="fas fa-search" style="font-size:2.2rem; opacity:0.4; margin-bottom:0.75rem; display:block;"></i>
-            <div style="font-weight:600; color:var(--text-primary); font-size:1rem; margin-bottom:0.25rem;">Nenhum médico encontrado</div>
-            <div style="font-size:0.85rem; margin-bottom:1rem;">Nenhum profissional corresponde aos filtros pesquisados.</div>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('btnLimparFiltrosMedicos')?.click()"><i class="fas fa-undo"></i> Limpar filtros</button>
-          </div>
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = emptyRow(5, 'Nenhum médico encontrado', 'Nenhum profissional corresponde aos filtros. ',
+      '<div style="margin-top:10px"><button class="btn btn-sm" onclick="document.getElementById(\'btnLimparFiltrosMedicos\')?.click()">Limpar filtros</button></div>');
     return;
   }
-  
-  tbody.innerHTML = '';
-  
-  data.forEach(m => {
-      const tr = document.createElement('tr');
-      
-      let statusBadge = `<span class="badge badge-pending">${escapeHTML(m.status || 'Vaga')}</span>`;
-      if (m.status === 'OCUPADA') statusBadge = `<span class="badge badge-approved">OCUPADA</span>`;
-      else if (m.status === 'DESOCUPADA') statusBadge = `<span class="badge badge-rejected">DESOCUPADA</span>`;
-      else if (m.status === 'EM PROCESSO DE OCUPACAO') statusBadge = `<span class="badge badge-pending">EM PROCESSO</span>`;
 
-      const isInativa = m.ativo_inativo === 'INATIVA';
-      const rowStyle = isInativa ? 'opacity: 0.5;' : '';
-
-      tr.style.cssText = rowStyle;
-      tr.innerHTML = `
-        <td>
-          <div style="font-weight: 500; color: var(--text-primary)">${m.nome_profissional ? escapeHTML(m.nome_profissional) : '<em style="color:var(--text-muted)">Vaga sem profissional</em>'}</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(m.perfil_profissional || '-')}</div>
-          ${m.instituicao ? `<div style="font-size:0.75rem; color:var(--accent-primary); margin-top:3px; display:flex; align-items:center; gap:4px;"><i class="fas fa-university" style="font-size:0.7rem"></i> ${escapeHTML(m.instituicao)}</div>` : ''}
-          ${m.supervisor ? `<div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;"><span style="color:var(--text-muted)">Sup:</span> ${escapeHTML(m.supervisor)}${m.tutor ? ` <span style="color:var(--text-muted); margin:0 3px;">•</span> <span style="color:var(--text-muted)">Tut:</span> ${escapeHTML(m.tutor)}` : ''}</div>` : ''}
-          ${m.secretario_saude ? `<div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;"><i class="fas fa-hospital-user" style="font-size:0.7rem; color:var(--accent-warning); margin-right:3px;"></i><span style="color:var(--text-muted)">Sec:</span> ${escapeHTML(m.secretario_saude)}</div>` : ''}
-        </td>
-        <td>${statusBadge}${isInativa ? '<div style="font-size:0.7rem;color:var(--accent-danger);margin-top:2px">INATIVA</div>' : ''}</td>
-        <td>
-          <div>${escapeHTML(m.municipio_atuacao || '-')}</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted)">${escapeHTML(m.regiao_saude || '-')}</div>
-        </td>
-        <td style="font-size:0.8rem; color: var(--text-secondary)">${escapeHTML(m.status_prof_egestor || '-')}</td>
-        <td class="actions">
-          <button class="btn btn-ghost btn-sm" onclick="viewMedicoDetails('${escapeHTML(m.id)}')">Ver</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+  tbody.innerHTML = data.map(m => {
+    const inativa = m.ativo_inativo === 'INATIVA';
+    const vaga = m.status === 'EM PROCESSO DE OCUPACAO' ? 'Em processo' : (m.status || 'Vaga');
+    const sup = [m.supervisor ? `Sup.: ${escapeHTML(m.supervisor)}` : '', m.tutor ? `Tutor: ${escapeHTML(m.tutor)}` : ''].filter(Boolean).join(' · ');
+    return `<tr class="click${inativa ? ' inactive' : ''}" data-id="${escapeHTML(String(m.id))}">
+      <td>
+        <div class="cell-main">${m.nome_profissional ? escapeHTML(m.nome_profissional) : '<span class="muted">Vaga sem profissional</span>'}</div>
+        <div class="cell-sub">${escapeHTML(m.perfil_profissional || '')}${m.eixo_vaga ? ` · ${escapeHTML(titleCase(m.eixo_vaga))}` : ''}</div>
+      </td>
+      <td>${statusTag(vaga)}${inativa ? '<div class="cell-sub alert-num">Inativa</div>' : ''}</td>
+      <td>${escapeHTML(titleCase(m.municipio_atuacao || '—'))}<div class="cell-sub">${escapeHTML(titleCase(m.regiao_saude || ''))}</div></td>
+      <td>${escapeHTML(m.instituicao || '—')}${sup ? `<div class="cell-sub">${sup}</div>` : ''}</td>
+      <td class="muted">${escapeHTML(titleCase(m.status_prof_egestor || '—'))}</td>
+    </tr>`;
+  }).join('');
 }
+
+// Clique na linha abre a gaveta de detalhes
+document.addEventListener('click', (e) => {
+  const tr = e.target.closest('#medicosTableBody tr[data-id]');
+  if (tr && !e.target.closest('a, button')) viewMedicoDetails(tr.dataset.id);
+});
 
 
 function populateMedicoFilters(data) {
-  const selectEixo = document.getElementById('filterMedicoEixo');
-  const selectGestao = document.getElementById('filterMedicoGestao');
-  const selectInst = document.getElementById('filterMedicoInstituicao');
-  const selectTutor = document.getElementById('filterMedicoTutor');
-
-  if (selectEixo && data) {
-    const currentVal = selectEixo.value;
-    const eixos = new Set();
-    data.forEach(m => { if (m.eixo_vaga && m.eixo_vaga.trim()) eixos.add(m.eixo_vaga.trim()); });
-    const sorted = Array.from(eixos).sort();
-    selectEixo.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todos os Eixos</option>' +
-      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
-    if (currentVal && eixos.has(currentVal)) selectEixo.value = currentVal;
-  }
-
-  if (selectGestao && data) {
-    const currentVal = selectGestao.value;
-    const gestoes = new Set();
-    data.forEach(m => { if (m.gestao && m.gestao.trim()) gestoes.add(m.gestao.trim()); });
-    const sorted = Array.from(gestoes).sort();
-    selectGestao.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Gestões</option>' +
-      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
-    if (currentVal && gestoes.has(currentVal)) selectGestao.value = currentVal;
-  }
-
-  if (selectInst && data) {
-    const currentVal = selectInst.value;
-    const insts = new Set();
-    data.forEach(m => { if (m.instituicao && m.instituicao.trim()) insts.add(m.instituicao.trim()); });
-    const sorted = Array.from(insts).sort();
-    selectInst.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Instituições</option>' +
-      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
-    if (currentVal && insts.has(currentVal)) selectInst.value = currentVal;
-  }
-
-  if (selectTutor && data) {
-    const currentVal = selectTutor.value;
-    const tutores = new Set();
-    data.forEach(m => { if (m.tutor && m.tutor.trim()) tutores.add(m.tutor.trim()); });
-    const sorted = Array.from(tutores).sort();
-    selectTutor.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todos os Tutores</option>' +
-      sorted.map(v => `<option value="${escapeHTML(v)}" style="background: #0b2236; color: #fff;">${escapeHTML(v)}</option>`).join('');
-    if (currentVal && tutores.has(currentVal)) selectTutor.value = currentVal;
-  }
+  const fill = (id, label, field) => {
+    const select = document.getElementById(id);
+    if (!select || !data) return;
+    const currentVal = select.value;
+    const values = new Set();
+    data.forEach(m => { if (m[field] && String(m[field]).trim()) values.add(String(m[field]).trim()); });
+    const sorted = Array.from(values).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    select.innerHTML = `<option value="">${label}</option>` + sorted.map(v => `<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('');
+    if (currentVal && values.has(currentVal)) select.value = currentVal;
+  };
+  fill('filterMedicoEixo', 'Todos os eixos', 'eixo_vaga');
+  fill('filterMedicoGestao', 'Todas as gestões', 'gestao');
+  fill('filterMedicoInstituicao', 'Todas as instituições', 'instituicao');
+  fill('filterMedicoTutor', 'Todos os tutores', 'tutor');
 }
 
 
 function setupMedicoFilters() {
+  if (window.__medicoFiltersBound) return;
+  window.__medicoFiltersBound = true;
   const elementIds = [
     'searchMedicoName',
     'searchMedicoCity',
@@ -275,9 +240,11 @@ function filterMedicos() {
 async function viewMedicoDetails(id) {
   const modal = document.getElementById('modalMedico');
   const modalBody = document.getElementById('modalMedicoBody');
+  const title = document.getElementById('modalMedicoTitle');
   if (!modal || !modalBody) return;
-  
-  modalBody.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted)"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:1rem">Carregando detalhes...</p></div>';
+
+  if (title) title.textContent = 'Carregando…';
+  modalBody.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Carregando detalhes…</div>';
   modal.classList.add('active');
 
   try {
@@ -301,95 +268,76 @@ async function viewMedicoDetails(id) {
 
     // Buscar processos relacionados por nome do médico (insensível a acentos)
     const docName = (medico.nome_profissional || '').trim();
-    let processosRelacionados = (window.processosData || []).filter(p => matchMedicoProcesso(docName, p));
+    const processosRelacionados = (window.processosData || []).filter(p => matchMedicoProcesso(docName, p));
 
-    let processosHtml = '';
-    if (processosRelacionados.length > 0) {
-      processosHtml = processosRelacionados.map(p => {
-        let badgeClass = 'badge-pending';
-        const st = (p.status_processo || '').toUpperCase();
-        if (st.includes('CONCLUÍDO') || st.includes('CONCLUIDO')) badgeClass = 'badge-approved';
-        else if (st.includes('ARQUIVADO') || st.includes('SOBRESTADO')) badgeClass = 'badge-rejected';
+    if (title) title.textContent = medico.nome_profissional || 'Vaga sem profissional';
+    const vaga = medico.status === 'EM PROCESSO DE OCUPACAO' ? 'Em processo' : medico.status;
 
-        return `
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.85rem; margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem">
+    const processosHtml = processosRelacionados.length
+      ? processosRelacionados.map(p => `
+          <div class="linked">
             <div>
-              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem">
-                <span style="font-weight:600; color:var(--text-primary); font-family:monospace; font-size:0.85rem">${escapeHTML(p.numero_sei || '-')}</span>
-                <span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span>
-              </div>
-              <div style="font-size:0.8rem; color:var(--text-secondary)">Equipe: <strong>${escapeHTML(p.equipe_responsavel || '-')}</strong> | Demanda: ${escapeHTML(p.descricao_demanda || '-')}</div>
+              <div class="mono" style="font-weight:500">${escapeHTML(p.numero_sei || '-')}</div>
+              <div class="cell-sub">${escapeHTML(p.equipe_responsavel || '—')} · ${escapeHTML(titleCase(p.tipo_demanda || p.descricao_demanda || '—'))}</div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="goToProcessoDetails('${escapeHTML(p.id)}')" style="font-size:0.8rem">
-              <i class="fas fa-external-link-alt"></i> Ver Processo
-            </button>
-          </div>
-        `;
-      }).join('');
-    } else {
-      processosHtml = '<div style="color:var(--text-muted); font-size:0.85rem; padding:0.5rem 0">Nenhum processo administrativo vinculado a este(a) profissional.</div>';
-    }
+            <div style="display:flex;gap:8px;align-items:center">${statusTag(p.status_processo)}
+              <button class="btn btn-sm" onclick="goToProcessoDetails('${escapeHTML(String(p.id))}')">Abrir</button></div>
+          </div>`).join('')
+      : '<div class="hint" style="padding:8px 0">Nenhum processo administrativo vinculado a este profissional.</div>';
+
+    const email = medico.email_secretario
+      ? `<a href="mailto:${escapeHTML(medico.email_secretario)}">${escapeHTML(medico.email_secretario)}</a>` : '';
 
     modalBody.innerHTML = `
-      <div class="modal-grid">
-        <div class="detail-group"><div class="detail-label">Nome Completo</div><div class="detail-value">${escapeHTML(medico.nome_profissional || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Nº Inscrição</div><div class="detail-value">${escapeHTML(medico.nu_inscricao || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Perfil Profissional</div><div class="detail-value">${escapeHTML(medico.perfil_profissional || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Status da Vaga</div><div class="detail-value">${escapeHTML(medico.status || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Ativo/Inativo</div><div class="detail-value">${escapeHTML(medico.ativo_inativo || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Status e-Gestor</div><div class="detail-value">${escapeHTML(medico.status_prof_egestor || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Município</div><div class="detail-value">${escapeHTML(medico.municipio_atuacao || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Região de Saúde (CIR)</div><div class="detail-value">${escapeHTML(medico.regiao_saude || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">UF</div><div class="detail-value">${escapeHTML(medico.estado_atuacao || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Categoria IVS</div><div class="detail-value">${escapeHTML(medico.categoria_ivs || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Modalidade</div><div class="detail-value">${escapeHTML(medico.modalidade || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Eixo da Vaga</div><div class="detail-value">${escapeHTML(medico.eixo_vaga || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Origem da Vaga</div><div class="detail-value">${escapeHTML(medico.origem_vaga || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Gestão</div><div class="detail-value">${escapeHTML(medico.gestao || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Eixo Integração</div><div class="detail-value">${escapeHTML(medico.eixo_integracao || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">País de Origem</div><div class="detail-value">${escapeHTML(medico.pais_origem || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Nacionalidade</div><div class="detail-value">${escapeHTML(medico.nacionalidade || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Sexo</div><div class="detail-value">${escapeHTML(medico.sexo || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Raça/Cor</div><div class="detail-value">${escapeHTML(medico.raca_cor || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Início Atividade</div><div class="detail-value">${escapeHTML(medico.inicio_atividade || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Encerramento</div><div class="detail-value">${escapeHTML(medico.encerramento_atividade || '-')}</div></div>
-        <div class="detail-group" style="grid-column: 1 / -1; background: rgba(124,58,237,0.06); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid rgba(124,58,237,0.18);">
-          <div style="font-weight: 700; color: var(--accent-primary); font-size: 0.85rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
-            <i class="fas fa-university"></i> Vinculação Acadêmica & Tutoria (PMMB)
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.85rem;">
-            <div><span style="color: var(--text-muted);">Instituição:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.instituicao || 'Não vinculado')}</strong></div>
-            <div><span style="color: var(--text-muted);">Supervisor:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.supervisor || 'Não informado')}</strong></div>
-            <div><span style="color: var(--text-muted);">Tutor:</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.tutor || 'Não informado')}</strong></div>
-          </div>
-        </div>
-        <div class="detail-group" style="grid-column: 1 / -1; background: rgba(6,182,212,0.06); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid rgba(6,182,212,0.18);">
-          <div style="font-weight: 700; color: var(--accent-secondary); font-size: 0.85rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
-            <i class="fas fa-hospital-user"></i> Gestão Municipal de Saúde (SMS)
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.5rem; font-size: 0.85rem;">
-            <div><span style="color: var(--text-muted);">Secretário(a):</span> <strong style="color: var(--text-primary);">${escapeHTML(medico.secretario_saude || 'Não informado')}</strong></div>
-            <div><span style="color: var(--text-muted);">E-mail / Contato:</span> <strong style="color: var(--text-primary);">${medico.email_secretario ? `<a href="mailto:${escapeHTML(medico.email_secretario)}" style="color:var(--accent-secondary); text-decoration:underline;"><i class="fas fa-envelope" style="margin-right:4px;"></i>${escapeHTML(medico.email_secretario)}</a>` : 'Não informado'}</strong></div>
-          </div>
-        </div>
-        <div class="detail-group"><div class="detail-label">CPF</div><div class="detail-value">${maskCPF(medico.cpf)}</div></div>
-        <div class="detail-group"><div class="detail-label">Email</div><div class="detail-value">${escapeHTML(medico.email || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Telefone</div><div class="detail-value">${escapeHTML(medico.telefone || '-')}</div></div>
-        <div class="detail-group"><div class="detail-label">Banco</div><div class="detail-value">${escapeHTML(medico.banco || '-')} / Ag: ${maskBankAccount(medico.agencia_bancaria)} / Cc: ${maskBankAccount(medico.conta_bancaria)}</div></div>
-      </div>
-
-      <!-- Seção de Processos Administrativos Vinculados -->
-      <div style="margin-top:1.5rem; background:var(--bg-secondary); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.95rem; font-weight:600; display:flex; align-items:center; justify-content:space-between">
-          <span><i class="fas fa-gavel" style="margin-right:0.5rem"></i> Processos Administrativos Relacionados</span>
-          <span class="badge badge-info" style="font-size:0.8rem">${processosRelacionados.length}</span>
-        </h4>
-        ${processosHtml}
-      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px">${statusTag(vaga)}${medico.ativo_inativo === 'INATIVA' ? statusTag('Inativa') : ''}${medico.eixo_vaga ? `<span class="tag plain">${escapeHTML(titleCase(medico.eixo_vaga))}</span>` : ''}</div>
+      <div class="dsec">Lotação</div>
+      ${detailsList([
+        ['Município', titleCase(medico.municipio_atuacao || '')],
+        ['UF', medico.estado_atuacao],
+        ['Região de saúde (CIR)', titleCase(medico.regiao_saude || '')],
+        ['Categoria IVS', medico.categoria_ivs]
+      ])}
+      <div class="dsec">Vaga e vínculo</div>
+      ${detailsList([
+        ['Perfil profissional', medico.perfil_profissional],
+        ['Nº inscrição', medico.nu_inscricao],
+        ['Situação e-Gestor', medico.status_prof_egestor],
+        ['Modalidade', medico.modalidade],
+        ['Origem da vaga', medico.origem_vaga],
+        ['Gestão', medico.gestao],
+        ['Eixo integração', medico.eixo_integracao],
+        ['Início da atividade', medico.inicio_atividade],
+        ['Encerramento', medico.encerramento_atividade]
+      ])}
+      <div class="dsec">Supervisão acadêmica</div>
+      ${detailsList([
+        ['Instituição', medico.instituicao],
+        ['Supervisor', medico.supervisor],
+        ['Tutor', medico.tutor]
+      ])}
+      <div class="dsec">Gestão municipal</div>
+      ${detailsList([
+        ['Secretário(a) de saúde', medico.secretario_saude],
+        ['Contato', email, true]
+      ])}
+      <div class="dsec">Dados pessoais</div>
+      ${detailsList([
+        ['País de origem', medico.pais_origem],
+        ['Nacionalidade', medico.nacionalidade],
+        ['Sexo', medico.sexo],
+        ['Raça/cor', medico.raca_cor],
+        ['CPF', maskCPF(medico.cpf)],
+        ['E-mail', medico.email],
+        ['Telefone', medico.telefone],
+        ['Banco', `${medico.banco || '—'} · Ag. ${maskBankAccount(medico.agencia_bancaria)} · Cc. ${maskBankAccount(medico.conta_bancaria)}`]
+      ])}
+      <div class="dsec">Processos administrativos relacionados <span class="tag plain">${processosRelacionados.length}</span></div>
+      ${processosHtml}
     `;
   } catch (err) {
     console.error(err);
-    modalBody.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--accent-danger)">Erro ao carregar detalhes do médico.</div>';
+    if (title) title.textContent = 'Detalhes';
+    modalBody.innerHTML = '<div class="empty-state alert-num">Erro ao carregar detalhes do médico.</div>';
   }
 }
 
@@ -503,6 +451,7 @@ async function fetchCustomDoctorsData(columns) {
     const { data, error } = await supabaseClient
       .from('doctors')
       .select(colsString)
+      .order('id', { ascending: true })
       .range(from, from + size - 1);
     
     if (error) {

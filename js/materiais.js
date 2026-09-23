@@ -8,7 +8,7 @@ async function loadMateriais() {
   const grid = document.getElementById('materiaisGrid');
   if (!grid) return;
   
-  grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">Carregando materiais...</div>';
+  grid.innerHTML = '<div class="empty-state">Carregando materiais…</div>';
   
   try {
     const { data, error } = await supabaseClient
@@ -22,7 +22,7 @@ async function loadMateriais() {
     renderMateriais();
   } catch (err) {
     console.error('Erro ao buscar materiais:', err);
-    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--accent-danger); padding: 3rem;">Erro ao carregar materiais: ${err.message}</div>`;
+    grid.innerHTML = `<div class="empty-state alert-num">Erro ao carregar materiais: ${escapeHTML(err.message)}</div>`;
   }
 }
 
@@ -30,42 +30,36 @@ async function loadMateriais() {
 function renderMateriais() {
   const grid = document.getElementById('materiaisGrid');
   if (!grid || !window.materiaisData) return;
-  
+
+  // Contagem em cada aba
+  document.querySelectorAll('#sectionMateriais [data-count]').forEach(el => {
+    el.textContent = window.materiaisData.filter(m => m.categoria === el.dataset.count).length;
+  });
+
   const activeTabBtn = document.querySelector('#sectionMateriais .tab-btn.active');
   const activeTab = activeTabBtn ? activeTabBtn.dataset.tab.toUpperCase() : 'TUTORIAIS';
   const categoria = activeTab === 'TUTORIAIS' ? 'TUTORIAL' : (activeTab === 'DOCUMENTOS' ? 'DOCUMENTO' : 'INFORMATIVO');
-  
+
   const filtered = window.materiaisData.filter(m => m.categoria === categoria);
-  
+
   if (filtered.length === 0) {
-    grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum material encontrado nesta categoria.</div>';
+    grid.innerHTML = '<div class="empty-state">Nenhum material nesta categoria.</div>';
     return;
   }
-  
-  grid.innerHTML = '';
-  filtered.forEach(m => {
+
+  grid.innerHTML = filtered.map(m => {
     const isVideo = m.link_url && (m.link_url.includes('youtube') || m.link_url.includes('drive.google.com/file'));
-    const icon = isVideo ? 'fa-play-circle' : 'fa-file-pdf';
-    const color = isVideo ? '#ef4444' : '#3b82f6';
-    
-    grid.innerHTML += `
-      <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 1.5rem; transition: var(--transition); display: flex; flex-direction: column; gap: 1rem;">
-        <div style="display: flex; gap: 1rem; align-items: flex-start;">
-          <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: ${color}; flex-shrink: 0;">
-            <i class="fas ${icon}"></i>
-          </div>
-          <div>
-            <h4 style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.25rem;">${escapeHTML(m.titulo)}</h4>
-            <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(m.created_at).toLocaleDateString('pt-BR')}</div>
-          </div>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; flex-grow: 1;">${escapeHTML(m.descricao || '')}</p>
-        <a href="${/^https?:\/\//i.test(m.link_url || '') ? escapeHTML(m.link_url) : '#'}" target="_blank" class="btn btn-primary" style="width: 100%; text-align: center; justify-content: center; text-decoration: none;">
-          ${isVideo ? '<i class="fas fa-play"></i> Assistir' : '<i class="fas fa-external-link-alt"></i> Acessar Documento'}
-        </a>
+    const href = /^https?:\/\//i.test(m.link_url || '') ? escapeHTML(m.link_url) : '#';
+    return `<div class="doc">
+      <div class="ic"><i class="fas ${isVideo ? 'fa-circle-play' : 'fa-file-lines'}"></i></div>
+      <div>
+        <div class="cell-main">${escapeHTML(m.titulo)}</div>
+        ${m.descricao ? `<div class="cell-sub">${escapeHTML(m.descricao)}</div>` : ''}
+        <div class="cell-sub">${isVideo ? 'Vídeo' : 'Link'} · ${fmtDate(m.created_at)}</div>
       </div>
-    `;
-  });
+      <a href="${href}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">${isVideo ? 'Assistir' : 'Abrir'}</a>
+    </div>`;
+  }).join('');
 }
 
 
@@ -73,14 +67,7 @@ function setupMateriaisLogic() {
   const tabBtns = document.querySelectorAll('#sectionMateriais .tab-btn');
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      tabBtns.forEach(b => {
-        b.classList.remove('active');
-        b.style.borderBottom = 'none';
-        b.style.color = 'var(--text-secondary)';
-      });
-      btn.classList.add('active');
-      btn.style.borderBottom = '2px solid var(--accent-primary)';
-      btn.style.color = 'var(--text-primary)';
+      tabBtns.forEach(b => b.classList.toggle('active', b === btn));
       renderMateriais();
     });
   });

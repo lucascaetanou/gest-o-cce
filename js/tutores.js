@@ -19,62 +19,42 @@ async function loadTutores() {
     if (error) throw error;
     
     window.tutoresData = data || [];
+    setNavCount('navCountTutores', window.tutoresData.length);
     populateTutorFilters(window.tutoresData);
     renderTutoresTable(window.tutoresData);
     
   } catch (err) {
     console.error('Erro ao buscar tutores:', err);
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar tutores: ${escapeHTML(err.message)}</td></tr>`;
+    tbody.innerHTML = emptyRow(5, 'Erro ao carregar tutores', err.message);
   }
 }
 
 
 function renderTutoresTable(data) {
   const tbody = document.getElementById('tutoresTableBody');
+  const count = document.getElementById('tutoresCountBadge');
   if (!tbody) return;
+  if (count) count.textContent = `${fmtNum((data || []).length)} de ${fmtNum((window.tutoresData || []).length)} tutores`;
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:3rem">Nenhum tutor encontrado.</td></tr>';
+    tbody.innerHTML = emptyRow(5, 'Nenhum tutor encontrado', 'Ajuste ou limpe os filtros.');
     return;
   }
-  
-  tbody.innerHTML = '';
-  data.forEach(tutor => {
-    const tr = document.createElement('tr');
-    
-    // badges status
-    let badgeClass = 'badge-pending';
-    let badgeText = escapeHTML(tutor.situacao || 'Desconhecido');
-    if (badgeText.toLowerCase().includes('ativo') || badgeText.toLowerCase().includes('validado')) badgeClass = 'badge-approved';
-    else if (badgeText.toLowerCase().includes('inativo') || badgeText.toLowerCase().includes('desligado')) badgeClass = 'badge-rejected';
-    
-    tr.innerHTML = `
-      <td>
-        <div style="font-weight:600; color:var(--text-primary)">${escapeHTML(tutor.nome_tutor || '-')}</div>
-        <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(tutor.email || '-')}</div>
-      </td>
-      <td>
-        <div style="font-weight:500">${escapeHTML(tutor.sigla_inst || tutor.inst_supervisora || '-')}</div>
-        <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(tutor.municipio || '')}</div>
-      </td>
-      <td>
-        <div style="font-weight:500; color:var(--accent-secondary)">${escapeHTML(tutor.tipo_tutor || '-')}</div>
-      </td>
-      <td>
-        <div>${escapeHTML(tutor.telefone_1 || '-')}</div>
-        <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(tutor.tipo_tel_1 || '')}</div>
-      </td>
-      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="showTutorDetails('${escapeHTML(tutor.id)}')" title="Ver Detalhes">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+
+  tbody.innerHTML = data.map(tutor => `
+    <tr class="click" data-id="${escapeHTML(String(tutor.id))}">
+      <td><div class="cell-main">${escapeHTML(tutor.nome_tutor || '—')}</div><div class="cell-sub">${escapeHTML(tutor.email || '')}</div></td>
+      <td>${escapeHTML(tutor.sigla_inst || tutor.inst_supervisora || '—')}<div class="cell-sub">${escapeHTML(titleCase(tutor.municipio || ''))}</div></td>
+      <td>${escapeHTML(titleCase(tutor.tipo_tutor || '—'))}</td>
+      <td style="white-space:nowrap">${escapeHTML(tutor.telefone_1 || '—')}<div class="cell-sub">${escapeHTML(tutor.tipo_tel_1 || '')}</div></td>
+      <td>${statusTag(tutor.situacao)}</td>
+    </tr>`).join('');
 }
 
+document.addEventListener('click', (e) => {
+  const tr = e.target.closest('#tutoresTableBody tr[data-id]');
+  if (tr) window.showTutorDetails(tr.dataset.id);
+});
 
 function populateTutorFilters(data) {
   if (!data) return;
@@ -178,70 +158,51 @@ function filterTutores() {
 
 
 window.showTutorDetails = function(id) {
-  const tutor = (window.tutoresData || []).find(t => t.id === id);
+  const tutor = (window.tutoresData || []).find(t => String(t.id) === String(id));
   if (!tutor) return;
-  
+
   const modalBody = document.getElementById('modalTutorBody');
   const modal = document.getElementById('modalTutor');
+  const title = document.getElementById('modalTutorTitle');
   if (!modalBody || !modal) return;
-  
+
+  const tel = (n, t) => n ? `${n}${t ? ` (${t})` : ''}` : '';
+  if (title) title.textContent = tutor.nome_tutor || 'Tutor';
   modalBody.innerHTML = `
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem">
-      <!-- INFO BÁSICA -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-secondary); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Informações Pessoais</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Nome:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(tutor.nome_tutor || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Mãe:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.nome_mae || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Data Nasc.:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.data_nascimento || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">E-mail:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.email || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Tel 1:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.telefone_1 || '-')}</span> <small style="color:var(--text-muted)">(${escapeHTML(tutor.tipo_tel_1 || '-')})</small></div>
-          <div><span style="color:var(--text-secondary)">Tel 2:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.telefone_2 || '-')}</span> <small style="color:var(--text-muted)">(${escapeHTML(tutor.tipo_tel_2 || '-')})</small></div>
-          <div><span style="color:var(--text-secondary)">Tel 3:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.telefone_3 || '-')}</span> <small style="color:var(--text-muted)">(${escapeHTML(tutor.tipo_tel_3 || '-')})</small></div>
-        </div>
-      </div>
-      
-      <!-- INSTITUIÇÃO E SITUAÇÃO -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-secondary); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Instituição e Função</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Inst. Supervisora:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(tutor.inst_supervisora || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Sigla Inst.:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.sigla_inst || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Tipo Tutor:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(tutor.tipo_tutor || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Responsável IS:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.responsavel_is || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Validado:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.validado || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Situação:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(tutor.situacao || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Data Cadastro:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.data_cadastro || '-')}</span></div>
-        </div>
-      </div>
-    </div>
-    
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
-      <!-- ENDEREÇO -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-secondary); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Endereço</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Logradouro:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.logradouro || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Município:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.municipio || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">CEP:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.cep || '-')}</span></div>
-        </div>
-      </div>
-      
-      <!-- DADOS PROFISSIONAIS -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-secondary); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Dados Profissionais</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Formação:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.formacao_profissional || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Titulação:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.titulacao || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Especialidade:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.especialidade_medica || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Órgão de Classe:</span> <span style="color:var(--text-primary)">${escapeHTML(tutor.orgao_classe || '-')} (${escapeHTML(tutor.uf_conselho || '-')})</span></div>
-          <div><span style="color:var(--text-secondary)">Número Reg.:</span> <span style="color:var(--text-primary); font-family:monospace">${escapeHTML(tutor.numero_registro || '-')}</span></div>
-        </div>
-      </div>
-    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px">${statusTag(tutor.situacao)}${tutor.tipo_tutor ? `<span class="tag plain">${escapeHTML(titleCase(tutor.tipo_tutor))}</span>` : ''}</div>
+    <div class="dsec">Contato</div>
+    ${detailsList([
+      ['E-mail', tutor.email ? `<a href="mailto:${escapeHTML(tutor.email)}">${escapeHTML(tutor.email)}</a>` : '', true],
+      ['Telefone 1', tel(tutor.telefone_1, tutor.tipo_tel_1)],
+      ['Telefone 2', tel(tutor.telefone_2, tutor.tipo_tel_2)],
+      ['Telefone 3', tel(tutor.telefone_3, tutor.tipo_tel_3)]
+    ])}
+    <div class="dsec">Instituição e função</div>
+    ${detailsList([
+      ['Instituição supervisora', tutor.inst_supervisora],
+      ['Sigla', tutor.sigla_inst],
+      ['Tipo de tutor', tutor.tipo_tutor],
+      ['Responsável IS', tutor.responsavel_is],
+      ['Validado', tutor.validado],
+      ['Cadastrado em', tutor.data_cadastro]
+    ])}
+    <div class="dsec">Dados profissionais</div>
+    ${detailsList([
+      ['Formação', tutor.formacao_profissional],
+      ['Titulação', tutor.titulacao],
+      ['Especialidade', tutor.especialidade_medica],
+      ['Órgão de classe', [tutor.orgao_classe, tutor.uf_conselho].filter(Boolean).join(' · ')],
+      ['Nº de registro', tutor.numero_registro ? `<span class="mono">${escapeHTML(tutor.numero_registro)}</span>` : '', true]
+    ])}
+    <div class="dsec">Dados pessoais e endereço</div>
+    ${detailsList([
+      ['Nome da mãe', tutor.nome_mae],
+      ['Data de nascimento', tutor.data_nascimento],
+      ['Logradouro', tutor.logradouro],
+      ['Município', tutor.municipio],
+      ['CEP', tutor.cep]
+    ])}
   `;
-  
+
   modal.classList.add('active');
 };
-
-

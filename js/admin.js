@@ -150,6 +150,9 @@ function setupNavigation() {
         e.preventDefault();
         navigateToRoute(routeKey, true);
       });
+      navEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navEl.click(); }
+      });
     }
   });
 
@@ -309,6 +312,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const adminName = document.getElementById('adminName');
   if (adminName && currentProfile && currentProfile.name) {
     adminName.textContent = currentProfile.name;
+    const initials = document.getElementById('adminInitials');
+    if (initials) {
+      const parts = currentProfile.name.trim().split(/\s+/);
+      initials.textContent = ((parts[0] || '')[0] || '').concat(parts.length > 1 ? parts[parts.length - 1][0] : '').toUpperCase();
+    }
   }
 
   // 4. Logout
@@ -351,47 +359,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (currentUserIsAdmin && btnRefreshUsers) {
     btnRefreshUsers.addEventListener('click', () => loadUsers());
   }
+
+  // Botões "Atualizar" de médicos e referências (recarregam só leitura)
+  document.getElementById('btnRefreshMedicos')?.addEventListener('click', () => loadMedicos());
+  document.getElementById('btnRefreshReferencias')?.addEventListener('click', () => loadReferencias());
 });
 
-// Alternador de Tema Claro / Escuro (com persistência local)
+// Alternador de Tema Claro / Escuro (claro é o padrão; o tema é aplicado no <head> antes da pintura)
 function setupThemeToggle() {
   const btn = document.getElementById('btnThemeToggle');
   const icon = document.getElementById('themeIcon');
-  const savedTheme = localStorage.getItem('gestao_cce_theme') || 'dark';
+  const label = document.getElementById('themeLabel');
 
-  if (savedTheme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-    if (icon) {
-      icon.className = 'fas fa-moon';
-      icon.style.color = 'var(--accent-primary)';
-    }
-  }
+  const syncButton = () => {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+    if (label) label.textContent = dark ? 'Tema claro' : 'Tema escuro';
+  };
+  syncButton();
 
   if (btn && !btn.dataset.listenerAttached) {
     btn.dataset.listenerAttached = 'true';
     btn.addEventListener('click', () => {
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      if (isLight) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('gestao_cce_theme', 'dark');
-        if (icon) {
-          icon.className = 'fas fa-sun';
-          icon.style.color = 'var(--accent-warning)';
-        }
-        if (window.showToast) window.showToast('Tema Escuro ativado', 'info');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem('gestao_cce_theme', 'light');
-        if (icon) {
-          icon.className = 'fas fa-moon';
-          icon.style.color = 'var(--accent-primary)';
-        }
-        if (window.showToast) window.showToast('Tema Claro ativado', 'info');
-      }
-      // Re-renderizar gráficos com o novo tema
-      if (typeof renderDashboardWithCurrentFilter === 'function') {
-        renderDashboardWithCurrentFilter();
-      }
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (dark) document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', 'dark');
+      try { localStorage.setItem('gestao_cce_theme_v2', dark ? 'light' : 'dark'); } catch (e) {}
+      syncButton();
+      if (typeof window.refreshMapTheme === 'function') window.refreshMapTheme();
     });
   }
 }

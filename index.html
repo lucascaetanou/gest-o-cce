@@ -5,17 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://aodzyrsmzuqkoxvhwdqz.supabase.co wss://aodzyrsmzuqkoxvhwdqz.supabase.co https://cdn.jsdelivr.net; img-src 'self' data: https:;">
   <title>Login | Gestão CCE</title>
-  <meta name="description" content="Acesso à plataforma de gestão do Centro de Ciências Exatas">
+  <meta name="description" content="Acesso ao painel de gestão da CCE do Programa Mais Médicos no Ceará">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=31">
+  <link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body>
   <div class="auth-wrapper auth-experience">
-    <div class="bg-orb bg-orb-1"></div>
-    <div class="bg-orb bg-orb-2"></div>
-    <div class="bg-orb bg-orb-3"></div>
-
     <main class="auth-stage" aria-label="Acesso à plataforma Gestão CCE">
       <div class="auth-shell" id="authShell">
         <section class="auth-pane auth-pane-login" aria-labelledby="loginTitle">
@@ -108,20 +104,18 @@
 
         <div class="auth-overlay-wrap">
           <div class="auth-overlay">
-            <div class="auth-overlay-shape auth-overlay-shape-one"></div>
-            <div class="auth-overlay-shape auth-overlay-shape-two"></div>
             <div class="auth-overlay-panel auth-overlay-new">
-              <div class="auth-overlay-icon"><i class="fas fa-user-plus"></i></div>
-              <span class="auth-overlay-kicker">Comunidade CCE</span>
+              <img src="assets/logo.png?v=6" alt="" class="auth-overlay-logo">
+              <span class="auth-overlay-kicker">Gestão CCE · Programa Mais Médicos no Ceará</span>
               <h2>Novo por aqui?</h2>
-              <p>Solicite seu acesso aqui.</p>
+              <p>Peça acesso ao painel. Seu cadastro é analisado por um administrador antes de ser liberado.</p>
               <button type="button" class="auth-overlay-button" id="showRegister">Criar conta <i class="fas fa-arrow-right"></i></button>
             </div>
             <div class="auth-overlay-panel auth-overlay-returning">
-              <div class="auth-overlay-icon"><i class="fas fa-right-to-bracket"></i></div>
-              <span class="auth-overlay-kicker">Bem-vindo novamente</span>
+              <img src="assets/logo.png?v=6" alt="" class="auth-overlay-logo">
+              <span class="auth-overlay-kicker">Gestão CCE · Programa Mais Médicos no Ceará</span>
               <h2>Já possui uma conta?</h2>
-              <p>Entre com suas credenciais para continuar acompanhando a gestão CCE.</p>
+              <p>Entre com seu e-mail e senha para voltar ao painel.</p>
               <button type="button" class="auth-overlay-button" id="showLogin">Fazer login <i class="fas fa-arrow-left"></i></button>
             </div>
           </div>

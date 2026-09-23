@@ -8,9 +8,8 @@ window.dashboardReferencias = [];
 window.dashboardProcessos = [];
 window.dashboardSelectedRegion = 'TODAS';
 
-// Instâncias dos gráficos
-let chartRegiao = null;
-let chartTipoProf = null;
+let rankRegioesShowAll = false;
+let alertasShowAll = false;
 
 async function loadDashboardStats() {
   if (!supabaseClient) return;
@@ -44,21 +43,58 @@ async function loadDashboardStats() {
     // Renderizar métricas e gráficos com o filtro atual
     renderDashboardWithCurrentFilter();
 
+    // Mapa e tela de referências usam as contagens ao vivo por município
+    if (typeof window.initCearaMap === 'function') window.initCearaMap(window.dashboardReferencias);
+    if (typeof filterReferencias === 'function' && typeof allReferencias !== 'undefined' && allReferencias.length) filterReferencias();
+
   } catch (error) {
     console.error('Erro ao carregar métricas do dashboard:', error);
   }
 }
 
+// Opções do filtro saem das macrorregiões cadastradas em referencias_regionalizadas
 function setupDashboardRegionFilter() {
   const select = document.getElementById('selectRegiaoDashboard');
-  if (select && !select.dataset.listenerAttached) {
+  if (!select) return;
+
+  const macros = [...new Set((window.dashboardReferencias || [])
+    .map(r => (r.macro_regiao || '').trim())
+    .filter(m => m && normStr(m) !== 'nao informado'))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  if (macros.length && select.options.length <= 1) {
+    macros.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      select.appendChild(opt);
+    });
+  }
+
+  if (!select.dataset.listenerAttached) {
     select.dataset.listenerAttached = 'true';
     select.addEventListener('change', () => {
       window.dashboardSelectedRegion = select.value;
       renderDashboardWithCurrentFilter();
+      if (typeof window.ceMapSelectFromFilter === 'function') window.ceMapSelectFromFilter(select.value);
     });
   }
 }
+
+// Chamado pelo mapa ao clicar numa região: mantém o filtro do painel em sincronia
+window.setDashboardRegion = function(macro) {
+  const select = document.getElementById('selectRegiaoDashboard');
+  const value = macro || 'TODAS';
+  if (select) {
+    if (![...select.options].some(o => o.value === value)) {
+      const opt = document.createElement('option');
+      opt.value = value; opt.textContent = value;
+      select.appendChild(opt);
+    }
+    select.value = value;
+  }
+  window.dashboardSelectedRegion = value;
+  renderDashboardWithCurrentFilter();
+};
 
 // Helper: Mapa de Município -> Macro Região
 function getCityToMacroMap() {
@@ -79,12 +115,15 @@ function doctorMatchesRegion(d, selectedRegion, cityToMacroMap) {
   const cityNorm = normStr(d.municipio_atuacao);
   const cirNorm = normStr(d.regiao_saude);
 
-  // 1. Checar mapeamento de município da tabela de referências
-  if (cityNorm && cityToMacroMap[cityNorm]) {
+  // 1. Checar mapeamento de município da tabela de referências.
+  //    Se o município tem macrorregião cadastrada, ela decide sozinha (as palavras-chave abaixo
+  //    são só reserva para municípios sem cadastro e confundiam números como "1" e "12").
+  if (cityNorm && cityToMacroMap[cityNorm] && cityToMacroMap[cityNorm] !== 'nao informado') {
     const macro = cityToMacroMap[cityNorm];
     if (macro.includes(selNorm) || selNorm.includes(macro)) return true;
     if (selNorm.includes('norte') && (macro.includes('sobral') || macro.includes('norte'))) return true;
     if (selNorm.includes('sobral') && (macro.includes('sobral') || macro.includes('norte'))) return true;
+    return false;
   }
 
   // 2. Checar correspondência direta
@@ -123,7 +162,11 @@ function referenceMatchesRegion(r, selectedRegion) {
   const cirNorm = normStr(r.regiao_saude || '');
   const munNorm = normStr(r.municipio_dsei || '');
 
-  if (macroNorm.includes(selNorm) || selNorm.includes(macroNorm)) return true;
+  // Com macrorregião cadastrada, ela decide sozinha
+  if (macroNorm && macroNorm !== 'nao informado') {
+    if (macroNorm.includes(selNorm) || selNorm.includes(macroNorm)) return true;
+    return (selNorm.includes('norte') || selNorm.includes('sobral')) && (macroNorm.includes('norte') || macroNorm.includes('sobral'));
+  }
   if (cirNorm.includes(selNorm) || munNorm.includes(selNorm)) return true;
 
   if (selNorm.includes('cariri')) {
@@ -149,6 +192,44 @@ function referenceMatchesRegion(r, selectedRegion) {
   return false;
 }
 
+// Números por município calculados ao vivo a partir da tabela doctors (fonte oficial das vagas).
+// referencias_regionalizadas fica só para região, macrorregião, responsável e IVS: seus totais estão desatualizados.
+function getMunicipioStats(keyFn) {
+  const k = keyFn || (s => normStr(s).replace(/\s+/g, ' '));
+  const stats = {};
+  (window.dashboardAllDoctors || []).forEach(d => {
+    if (d.ativo_inativo !== 'ATIVA' || !d.municipio_atuacao) return;
+    const key = k(d.municipio_atuacao);
+    const s = stats[key] = stats[key] || { nome: d.municipio_atuacao, regiao_saude: d.regiao_saude || '', total: 0, ocup: 0, abertas: 0, emProc: 0, fed: 0, copart: 0 };
+    s.total++;
+    const mod = (d.modalidade || '').toUpperCase();
+    if (mod.includes('COPARTICIPACAO')) s.copart++; else if (mod) s.fed++;
+    if (d.status === 'OCUPADA') s.ocup++;
+    else if (d.status === 'DESOCUPADA') s.abertas++;
+    else if (d.status === 'EM PROCESSO DE OCUPACAO') s.emProc++;
+    if (!s.regiao_saude && d.regiao_saude) s.regiao_saude = d.regiao_saude;
+  });
+  return stats;
+}
+window.getMunicipioStats = getMunicipioStats;
+
+// Linha de referência de cada município (a tabela tem duplicatas; prefere a que tem região de saúde)
+function getReferenciaByMun() {
+  const out = {};
+  (window.dashboardReferencias || []).forEach(r => {
+    const key = normStr(r.municipio_dsei).replace(/\s+/g, ' ');
+    if (!key) return;
+    if (!out[key] || (!out[key].regiao_saude && r.regiao_saude)) out[key] = r;
+  });
+  return out;
+}
+window.getReferenciaByMun = getReferenciaByMun;
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
 function renderDashboardWithCurrentFilter() {
   const allDoctors = window.dashboardAllDoctors || [];
   const selectedRegion = window.dashboardSelectedRegion;
@@ -171,45 +252,33 @@ function renderDashboardWithCurrentFilter() {
   const agsus = ativas.filter(d => (d.gestao || '').toUpperCase() === 'AGSUS');
   const municipios = new Set(filteredDoctors.map(d => d.municipio_atuacao).filter(Boolean));
 
-  const txOcupacao = ativas.length > 0 ? ((ocupadas.length / ativas.length) * 100).toFixed(0) : 0;
+  const taxa = ativas.length > 0 ? (ocupadas.length / ativas.length) * 100 : 0;
 
-  // Atualizar DOM
-  const elMed = document.getElementById('statMedicosAtivos'); if (elMed) elMed.textContent = ocupadas.length;
-  const elVag = document.getElementById('statTotalVagas'); if (elVag) elVag.textContent = ativas.length;
-  const elVagDet = document.getElementById('statVagasDet'); 
-  if (elVagDet) {
-    if (federal.length + copart.length > 0) {
-      elVagDet.textContent = `${federal.length} fed. + ${copart.length} copart.`;
-    } else if (pmm.length + agsus.length > 0) {
-      elVagDet.textContent = `${pmm.length} PMM + ${agsus.length} AgSUS`;
-    } else {
-      elVagDet.textContent = `${ocupadas.length} ocup. + ${desocupadas.length} desoc.`;
-    }
-  }
-  const elTx = document.getElementById('statTaxaOcupacao'); if (elTx) elTx.textContent = `${txOcupacao}%`;
-  const elTxDet = document.getElementById('statTaxaDet'); if (elTxDet) elTxDet.textContent = `${ocupadas.length} de ${ativas.length}`;
-  const elDesoc = document.getElementById('statVagasDesocupadas'); if (elDesoc) elDesoc.textContent = desocupadas.length;
-  const elExtra = document.getElementById('statProfissionalExtra'); if (elExtra) elExtra.textContent = emProcesso.length;
-  const elSec = document.getElementById('statSecretarios'); if (elSec) elSec.textContent = municipios.size;
-  const elSecDet = document.getElementById('statSecretariosDet'); if (elSecDet) elSecDet.textContent = `${municipios.size} municípios`;
+  // Indicadores
+  setText('statTaxaOcupacao', `${taxa.toFixed(0)}%`);
+  const bar = document.getElementById('statTaxaBar'); if (bar) bar.style.width = `${taxa}%`;
+  setText('statTaxaDet', `${fmtNum(ocupadas.length)} de ${fmtNum(ativas.length)} vagas preenchidas`);
+  setText('statVagasDesocupadas', fmtNum(desocupadas.length));
+  setText('statMedicosAtivos', fmtNum(ocupadas.length));
+  setText('statTotalVagas', fmtNum(ativas.length));
+  // Mesma regra do painel original: modalidade, depois gestão, depois ocupadas + desocupadas
+  let vagasDet = `${fmtNum(ocupadas.length)} ocup. + ${fmtNum(desocupadas.length)} desoc.`;
+  if (federal.length + copart.length > 0) vagasDet = `${fmtNum(federal.length)} fed. + ${fmtNum(copart.length)} copart.`;
+  else if (pmm.length + agsus.length > 0) vagasDet = `${fmtNum(pmm.length)} PMM + ${fmtNum(agsus.length)} AgSUS`;
+  setText('statVagasDet', vagasDet);
+  setText('statProfissionalExtra', fmtNum(emProcesso.length));
+  setText('statSecretarios', fmtNum(municipios.size));
+  setText('statSecretariosDet', plural(municipios.size, 'município', 'municípios'));
 
-  const d = new Date();
-  const subTitle = document.getElementById('dashSubtitle');
-  if (subTitle) {
-    const regiaoTexto = selectedRegion === 'TODAS' ? 'Ceará (Todas as Regiões)' : selectedRegion;
-    subTitle.textContent = `Lista atualizada em ${d.toLocaleDateString('pt-BR')} • ${municipios.size} municípios ativos (${regiaoTexto})`;
-  }
+  const munDesoc = getAlertasRows(selectedRegion).length;
+  setText('statMunDesoc', `em ${plural(munDesoc, 'município', 'municípios')}`);
 
-  // 2. Alertas de Desocupação
+  const regiaoTexto = (!selectedRegion || selectedRegion === 'TODAS') ? 'todo o estado' : `macrorregião ${selectedRegion}`;
+  setText('dashSubtitle', `Atualizado em ${new Date().toLocaleDateString('pt-BR')} · ${plural(municipios.size, 'município', 'municípios')} com vagas · ${regiaoTexto}`);
+
   renderAlertasList();
-
-  // 3. Gráfico por Região (se TODAS estiver selecionada, mostra todas; senão mostra foco)
-  updateMedicosRegiaoChart(filteredDoctors, selectedRegion === 'TODAS');
-
-  // 4. Gráfico Tipo Profissional
-  updateTipoProfissionalChart(filteredDoctors);
-
-  // 5. Panorama de processos administrativos
+  renderRegioesRank(filteredDoctors);
+  renderEixo(filteredDoctors);
   renderProcessInsights();
 }
 
@@ -253,34 +322,31 @@ function isStaleProcess(processo) {
   return (Date.now() - date.getTime()) / 86400000 > 30;
 }
 
-function updateProcessMetric(id, value) {
-  const element = document.getElementById(id);
-  if (element) element.textContent = value;
-}
-
-function renderProcessRanking(containerId, entries, total, filterType) {
+// Lista de barras horizontais; cada linha pode abrir a tela de processos filtrada
+function renderRankList(containerId, entries, onClick, emptyText) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
 
-  if (entries.length === 0) {
-    container.innerHTML = '<div class="process-ranking-empty">Nenhum processo nesta região.</div>';
+  if (!entries.length) {
+    container.innerHTML = `<div class="hint">${escapeHTML(emptyText || 'Nenhum dado nesta seleção.')}</div>`;
     return;
   }
 
   const max = entries[0][1] || 1;
   entries.forEach(([label, count]) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'process-ranking-row';
-    button.title = `Ver processos: ${label}`;
-    button.innerHTML = `
-      <span class="process-ranking-name">${escapeHTML(label)}</span>
-      <span class="process-ranking-track"><span class="process-ranking-fill" style="width:${Math.max(7, (count / max) * 100)}%"></span></span>
-      <span class="process-ranking-value">${count}</span>
-    `;
-    button.addEventListener('click', () => window.openProcessosFilter(filterType, label));
-    container.appendChild(button);
+    const row = document.createElement(onClick ? 'button' : 'div');
+    row.className = 'rank-row';
+    if (onClick) {
+      row.type = 'button';
+      row.title = `Ver processos: ${label}`;
+      row.addEventListener('click', () => onClick(label));
+    }
+    row.innerHTML = `
+      <span>${escapeHTML(titleCase(label))}</span>
+      <span class="bar"><i style="width:${Math.max(3, (count / max) * 100)}%"></i></span>
+      <span class="n">${fmtNum(count)}</span>`;
+    container.appendChild(row);
   });
 }
 
@@ -296,15 +362,14 @@ function renderProcessInsights() {
   const cities = new Set(processos.map(p => (p.municipio || '').trim()).filter(Boolean));
   const completionRate = processos.length ? Math.round((concluded.length / processos.length) * 100) : 0;
 
-  updateProcessMetric('dashProcTotal', processos.length.toLocaleString('pt-BR'));
-  updateProcessMetric('dashProcAbertos', open.length.toLocaleString('pt-BR'));
-  updateProcessMetric('dashProcAnalise', analysis.length.toLocaleString('pt-BR'));
-  updateProcessMetric('dashProcParados', stale.length.toLocaleString('pt-BR'));
-  updateProcessMetric('dashProcMunicipios', cities.size.toLocaleString('pt-BR'));
-  updateProcessMetric('dashProcConclusao', `${completionRate}%`);
-  updateProcessMetric('dashDemandTotal', `${processos.length.toLocaleString('pt-BR')} classificadas`);
-  const mapSummary = document.getElementById('mapProcessSummary');
-  if (mapSummary) mapSummary.textContent = `• ${processos.length.toLocaleString('pt-BR')} processos na seleção`;
+  setText('dashProcTotal', fmtNum(processos.length));
+  setText('dashProcAbertos', fmtNum(open.length));
+  setText('dashProcAnalise', fmtNum(analysis.length));
+  setText('dashProcParados', fmtNum(stale.length));
+  setText('dashProcMunicipios', fmtNum(cities.size));
+  setText('dashProcConclusao', `${completionRate}%`);
+  setText('dashDemandTotal', `· ${plural(processos.length, 'processo', 'processos')}`);
+  setText('mapProcessSummary', `· ${plural(processos.length, 'processo', 'processos')} na seleção`);
 
   const demandMap = {};
   const cityMap = {};
@@ -317,8 +382,8 @@ function renderProcessInsights() {
 
   const topDemands = Object.entries(demandMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const topCities = Object.entries(cityMap).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 6);
-  renderProcessRanking('dashboardDemandRanking', topDemands, processos.length, 'demanda');
-  renderProcessRanking('dashboardCityRanking', topCities, processos.length, 'municipio');
+  renderRankList('dashboardDemandRanking', topDemands, label => window.openProcessosFilter('demanda', label), 'Nenhum processo nesta região.');
+  renderRankList('dashboardCityRanking', topCities, label => window.openProcessosFilter('municipio', label), 'Nenhum processo nesta região.');
 }
 
 window.openProcessosFilter = function(filterType, value) {
@@ -335,10 +400,18 @@ window.openProcessosFilter = function(filterType, value) {
   }, 120);
 };
 
+// Tabela de municípios com vagas abertas
+function occCell(ocupadas, total) {
+  const p = total > 0 ? (ocupadas / total) * 100 : 0;
+  return `<div class="occ ${p < 60 ? 'low' : ''}"><span class="bar"><i style="width:${p}%"></i></span><span class="num">${fmtNum(ocupadas)}/${fmtNum(total)}</span></div>`;
+}
+window.occCell = occCell;
+
 function renderAlertasList() {
   const container = document.getElementById('alertasList');
-  const countEl = document.getElementById('alertasCount');
   const sortSelect = document.getElementById('alertasSort');
+  const foot = document.getElementById('alertasFoot');
+  const more = document.getElementById('alertasMore');
   const referencias = window.dashboardReferencias || [];
   const selectedRegion = window.dashboardSelectedRegion;
 
@@ -348,61 +421,61 @@ function renderAlertasList() {
     sortSelect.addEventListener('change', renderAlertasList);
     sortSelect.dataset.listener = 'true';
   }
-
-  // Filtrar referências por região se aplicável
-  let alertas = referencias.filter(r => r.vagas_desocupadas > 0);
-  if (selectedRegion && selectedRegion !== 'TODAS') {
-    alertas = alertas.filter(r => referenceMatchesRegion(r, selectedRegion));
+  if (more && !more.dataset.listener) {
+    more.dataset.listener = 'true';
+    more.addEventListener('click', () => { alertasShowAll = !alertasShowAll; renderAlertasList(); });
   }
 
+  const alertas = getAlertasRows(selectedRegion);
   const sortMethod = sortSelect ? sortSelect.value : 'desc';
-
   alertas.sort((a, b) => {
-    if (sortMethod === 'asc') {
-      return (a.vagas_desocupadas || 0) - (b.vagas_desocupadas || 0);
-    } else if (sortMethod === 'alpha') {
-      return (a.municipio_dsei || '').localeCompare(b.municipio_dsei || '');
-    } else {
-      return (b.vagas_desocupadas || 0) - (a.vagas_desocupadas || 0);
-    }
+    if (sortMethod === 'asc') return a.abertas - b.abertas;
+    if (sortMethod === 'alpha') return a.nome.localeCompare(b.nome, 'pt-BR');
+    return b.abertas - a.abertas || a.nome.localeCompare(b.nome, 'pt-BR');
   });
 
-  if (countEl) countEl.textContent = `${alertas.length} municípios com vagas abertas`;
-  container.innerHTML = '';
+  const totalAbertas = alertas.reduce((s, a) => s + a.abertas, 0);
+  setText('alertasCount', `${plural(alertas.length, 'município', 'municípios')} · ${plural(totalAbertas, 'vaga', 'vagas')}`);
 
   if (alertas.length === 0) {
-    container.innerHTML = '<div style="padding:2.5rem; text-align:center; color:var(--text-muted);"><i class="fas fa-check-circle" style="color:var(--accent-success); margin-bottom:0.5rem; display:block; font-size:1.5rem;"></i>Nenhuma vaga desocupada nesta região.</div>';
+    container.innerHTML = emptyRow(6, 'Nenhuma vaga desocupada nesta região.', '');
+    if (foot) foot.hidden = true;
     return;
   }
 
-  alertas.forEach(a => {
-    const total = a.total_vagas || 0;
-    const desc = a.vagas_desocupadas || 0;
-    const munName = a.municipio_dsei || '-';
+  const LIMIT = 10;
+  const visible = alertasShowAll ? alertas : alertas.slice(0, LIMIT);
+  container.innerHTML = visible.map(a => `<tr>
+      <td class="cell-main">${escapeHTML(a.semMunicipio ? 'Sem município (CEARA)' : titleCase(a.nome))}</td>
+      <td class="muted">${escapeHTML(titleCase(a.regiao || '—'))}</td>
+      <td class="r">${fmtNum(a.total)}</td>
+      <td>${occCell(a.ocup, a.total)}</td>
+      <td class="r"><b class="alert-num">${fmtNum(a.abertas)}</b></td>
+      <td class="r"><button class="lnk" type="button" onclick="window.filtrarMedicosPorMunicipio(decodeURIComponent('${encodeURIComponent(a.nome)}'))">Ver médicos</button></td>
+    </tr>`).join('');
 
-    const item = document.createElement('div');
-    item.className = 'alerta-item';
-    item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:0.85rem 1rem; border-bottom:1px solid var(--border); transition:background 0.2s;';
-    item.onmouseover = () => item.style.background = 'var(--surface-hover)';
-    item.onmouseout = () => item.style.background = 'transparent';
+  if (foot) {
+    foot.hidden = alertas.length <= LIMIT;
+    setText('alertasFootText', alertasShowAll ? `Mostrando todos os ${alertas.length}` : `Mostrando ${LIMIT} de ${alertas.length}`);
+    if (more) more.textContent = alertasShowAll ? 'Mostrar menos' : 'Ver todos';
+  }
+}
 
-    item.innerHTML = `
-      <div style="flex:1;">
-        <div style="font-weight:600; color:var(--text-primary); font-size:0.92rem;">${escapeHTML(munName)}</div>
-        <div style="font-size:0.78rem; color:var(--text-muted);">${escapeHTML(a.macro_regiao || a.regiao_saude || '-')}</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:1.25rem;">
-        <div style="text-align:right">
-          <div style="font-size:1.1rem; font-weight:700; color:var(--accent-danger)">${desc} <span style="font-size:0.75rem; font-weight:400; color:var(--text-muted)">abertas</span></div>
-          <div style="font-size:0.75rem; color:var(--text-muted)">de ${total} vagas</div>
-        </div>
-        <button class="btn btn-ghost btn-xs" style="background:var(--surface); border:1px solid var(--border); font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="window.filtrarMedicosPorMunicipio('${escapeHTML(munName)}')">
-          <i class="fas fa-user-md" style="color:var(--accent-primary)"></i> Ver Médicos
-        </button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
+// Municípios com vagas abertas na região (números da tabela doctors; região vem das referências)
+function getAlertasRows(selectedRegion) {
+  const refs = getReferenciaByMun();
+  return Object.entries(getMunicipioStats())
+    .filter(([, s]) => s.abertas > 0)
+    .map(([key, s]) => {
+      const ref = refs[key];
+      return {
+        nome: s.nome, total: s.total, ocup: s.ocup, abertas: s.abertas,
+        regiao: (ref && ref.regiao_saude) || s.regiao_saude || (ref && ref.macro_regiao) || '',
+        semMunicipio: key === 'ceara',
+        ref: ref || { municipio_dsei: s.nome, regiao_saude: s.regiao_saude }
+      };
+    })
+    .filter(a => !selectedRegion || selectedRegion === 'TODAS' || referenceMatchesRegion(a.ref, selectedRegion));
 }
 
 // Ação Rápida: Ir para aba de médicos filtrada por município
@@ -415,238 +488,85 @@ window.filtrarMedicosPorMunicipio = function(municipio) {
       if (searchInput) {
         searchInput.value = municipio;
         searchInput.dispatchEvent(new Event('input'));
-        if (window.showToast) {
-          window.showToast(`Filtrando médicos de ${municipio}`, 'info');
-        }
       }
     }, 150);
   }
 };
 
-function updateMedicosRegiaoChart(doctors, showAllRegions) {
-  const ctx = document.getElementById('chartMedicosRegiao');
-  if (!ctx) return;
-
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const textColor = isLight ? '#475569' : '#9bb2b6';
-  const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+// Médicos ativos por região de saúde (barras horizontais, 8 primeiras + "ver todas")
+function renderRegioesRank(doctors) {
+  const list = document.getElementById('rankRegioes');
+  const toggle = document.getElementById('rankRegioesToggle');
+  if (!list) return;
 
   const dataMap = {};
-  const source = doctors || [];
-  source.filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
-    const regiao = d.regiao_saude || 'Não Informado';
+  (doctors || []).filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
+    const regiao = d.regiao_saude || 'Não informado';
     dataMap[regiao] = (dataMap[regiao] || 0) + 1;
   });
+  const entries = Object.entries(dataMap).sort((a, b) => b[1] - a[1]);
 
-  const labels = Object.keys(dataMap).sort((a,b) => dataMap[b] - dataMap[a]);
-  const data = labels.map(l => dataMap[l]);
+  if (!entries.length) {
+    list.innerHTML = '<li class="hint">Nenhum médico ativo nesta seleção.</li>';
+    if (toggle) toggle.hidden = true;
+    return;
+  }
 
-  if (chartRegiao) chartRegiao.destroy();
+  const max = entries[0][1] || 1;
+  const visible = rankRegioesShowAll ? entries : entries.slice(0, 8);
+  list.innerHTML = visible.map(([label, count]) => `
+    <li><span title="${escapeHTML(label)}">${escapeHTML(titleCase(label).replace(/ Regiao /i, ' ').replace(/ Região /i, ' '))}</span>
+    <span class="bar"><i style="width:${Math.max(3, (count / max) * 100)}%"></i></span>
+    <span class="n">${fmtNum(count)}</span></li>`).join('');
 
-  chartRegiao = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Médicos Ativos',
-        data: data,
-        backgroundColor: isLight ? 'rgba(16, 169, 129, 0.88)' : 'rgba(16, 169, 129, 0.76)',
-        borderColor: '#10a981',
-        borderWidth: 1.5,
-        borderRadius: 8,
-        hoverBackgroundColor: '#0e9275'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: gridColor },
-          ticks: { color: textColor, font: { family: 'Inter', size: 11 } }
-        },
-        x: {
-          grid: { display: false },
-          ticks: { color: textColor, maxRotation: 25, minRotation: 0, font: { family: 'Inter', size: 10 } }
-        }
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(11, 34, 54, 0.96)',
-          titleColor: isLight ? '#0f172a' : '#f3faf8',
-          bodyColor: isLight ? '#475569' : '#9bb2b6',
-          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
-          borderWidth: 1,
-          cornerRadius: 8,
-          padding: 10,
-          titleFont: { family: 'Inter', weight: '700' },
-          bodyFont: { family: 'Inter' }
-        }
-      }
+  if (toggle) {
+    toggle.hidden = entries.length <= 8;
+    toggle.textContent = rankRegioesShowAll ? 'Mostrar menos' : `Ver as ${entries.length} regiões`;
+    if (!toggle.dataset.listener) {
+      toggle.dataset.listener = 'true';
+      toggle.addEventListener('click', () => { rankRegioesShowAll = !rankRegioesShowAll; renderDashboardWithCurrentFilter(); });
     }
-  });
-}
-
-function updateTipoProfissionalChart(doctors) {
-  const ctx = document.getElementById('chartTipoProfissional');
-  const legendContainer = document.getElementById('donutCustomLegend');
-  const centerVal = document.getElementById('donutCenterVal');
-  const badgeTotal = document.getElementById('badgeTotalProfissionais');
-  if (!ctx || !doctors) return;
-
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const borderColor = isLight ? '#ffffff' : '#0b2236';
-
-  // Cores distintas por Eixo da Vaga
-  const colorPalette = {
-    'VÍNCULO': '#10b981',        // Emerald Green
-    'ESTRATÉGICO': '#14b8a6',    // Teal
-    'FORMAÇÃO': '#06b6d4',       // Cyan Blue
-    'NÃO INFORMADO': '#64748b',  // Slate Gray
-    'OUTROS': '#f59e0b'          // Amber
-  };
-
-  const dataMap = {
-    'VÍNCULO': 0,
-    'ESTRATÉGICO': 0,
-    'FORMAÇÃO': 0
-  };
-  let totalAtivos = 0;
-
-  doctors.filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
-    let rawEixo = (d.eixo_vaga || '').trim().toUpperCase();
-    let eixo = 'NÃO INFORMADO';
-
-    if (rawEixo.includes('VINCULO') || rawEixo.includes('VÍNCULO')) eixo = 'VÍNCULO';
-    else if (rawEixo.includes('ESTRATEGICO') || rawEixo.includes('ESTRATÉGICO')) eixo = 'ESTRATÉGICO';
-    else if (rawEixo.includes('FORMACAO') || rawEixo.includes('FORMAÇÃO')) eixo = 'FORMAÇÃO';
-    else if (rawEixo) eixo = rawEixo;
-
-    dataMap[eixo] = (dataMap[eixo] || 0) + 1;
-    totalAtivos++;
-  });
-
-  // Remover categorias com 0 para exibição limpa
-  const sortedEixos = Object.entries(dataMap)
-    .filter(([_, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1]);
-
-  const labels = sortedEixos.map(p => p[0]);
-  const data = sortedEixos.map(p => p[1]);
-  const backgroundColors = labels.map(l => colorPalette[l] || '#64748b');
-
-  if (centerVal) centerVal.textContent = totalAtivos.toLocaleString('pt-BR');
-  if (badgeTotal) badgeTotal.textContent = `${totalAtivos.toLocaleString('pt-BR')} ativos`;
-
-  // Renderizar Donut Chart
-  if (chartTipoProf) chartTipoProf.destroy();
-
-  chartTipoProf = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: backgroundColors,
-        borderWidth: 2.5,
-        borderColor: borderColor,
-        hoverOffset: 8,
-        borderRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '72%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(11, 34, 54, 0.96)',
-          titleColor: isLight ? '#0f172a' : '#f3faf8',
-          bodyColor: isLight ? '#475569' : '#9bb2b6',
-          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
-          borderWidth: 1,
-          cornerRadius: 8,
-          padding: 10,
-          callbacks: {
-            label: function(context) {
-              const val = context.parsed || 0;
-              const pct = totalAtivos > 0 ? ((val / totalAtivos) * 100).toFixed(1) : 0;
-              return ` ${val.toLocaleString('pt-BR')} médicos (${pct}%)`;
-            }
-          }
-        }
-      }
-    }
-  });
-
-  // Renderizar Legenda Rica Customizada (HTML)
-  if (legendContainer) {
-    legendContainer.innerHTML = '';
-    sortedEixos.forEach(([eixo, count], idx) => {
-      const color = backgroundColors[idx];
-      const pct = totalAtivos > 0 ? ((count / totalAtivos) * 100).toFixed(1) : 0;
-
-      const row = document.createElement('div');
-      row.className = 'donut-legend-row';
-      row.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.45rem 0.65rem;
-        border-radius: var(--radius-sm);
-        transition: all 0.2s ease;
-        cursor: pointer;
-        font-size: 0.85rem;
-      `;
-      row.onmouseover = () => {
-        row.style.background = 'var(--surface-hover)';
-        if (chartTipoProf) chartTipoProf.setActiveElements([{ datasetIndex: 0, index: idx }]);
-        if (chartTipoProf) chartTipoProf.update();
-      };
-      row.onmouseout = () => {
-        row.style.background = 'transparent';
-        if (chartTipoProf) chartTipoProf.setActiveElements([]);
-        if (chartTipoProf) chartTipoProf.update();
-      };
-
-      row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
-          <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; flex-shrink: 0; box-shadow: 0 0 8px ${color}80;"></span>
-          <span style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(eixo)}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; margin-left: 0.75rem;">
-          <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">${count.toLocaleString('pt-BR')}</span>
-          <span style="color: var(--text-muted); font-size: 0.78rem; min-width: 42px; text-align: right; font-weight: 500;">${pct}%</span>
-        </div>
-      `;
-      legendContainer.appendChild(row);
-    });
   }
 }
 
-// Exportações Globais e Redimensionamento Seguro para SPA Mobile
+// Médicos por eixo da vaga: barra empilhada + tabela
+function renderEixo(doctors) {
+  const stack = document.getElementById('eixoStack');
+  const table = document.getElementById('eixoTable');
+  if (!stack || !table) return;
+
+  const colors = { 'FORMAÇÃO': 'var(--brand)', 'VÍNCULO': 'var(--brand-2)', 'ESTRATÉGICO': 'var(--m-c)' };
+  const dataMap = {};
+  let total = 0;
+  (doctors || []).filter(d => d.ativo_inativo === 'ATIVA' && d.status === 'OCUPADA').forEach(d => {
+    const raw = (d.eixo_vaga || '').trim().toUpperCase();
+    let eixo = 'NÃO INFORMADO';
+    if (raw.includes('VINCULO') || raw.includes('VÍNCULO')) eixo = 'VÍNCULO';
+    else if (raw.includes('ESTRATEGICO') || raw.includes('ESTRATÉGICO')) eixo = 'ESTRATÉGICO';
+    else if (raw.includes('FORMACAO') || raw.includes('FORMAÇÃO')) eixo = 'FORMAÇÃO';
+    else if (raw) eixo = raw;
+    dataMap[eixo] = (dataMap[eixo] || 0) + 1;
+    total++;
+  });
+
+  const entries = Object.entries(dataMap).sort((a, b) => b[1] - a[1]);
+  setText('badgeTotalProfissionais', `· ${fmtNum(total)} ativos`);
+  const color = e => colors[e] || 'var(--m-e)';
+  stack.innerHTML = entries.map(([e, n]) => `<i style="flex:${n};background:${color(e)}" title="${escapeHTML(e)}: ${fmtNum(n)}"></i>`).join('');
+  table.innerHTML = entries.map(([e, n]) => `
+    <tr><td><span class="sw" style="background:${color(e)}"></span>&nbsp; ${escapeHTML(titleCase(e))}</td>
+    <td class="r">${fmtNum(n)}</td>
+    <td class="r muted" style="width:64px">${total ? ((n / total) * 100).toFixed(1).replace('.', ',') : 0}%</td></tr>`).join('')
+    || '<tr><td class="hint">Nenhum médico ativo nesta seleção.</td></tr>';
+}
+
+// Exportações Globais
 window.renderDashboardWithCurrentFilter = renderDashboardWithCurrentFilter;
 window.renderProcessInsights = renderProcessInsights;
 window.getProcessDemandType = getProcessDemandType;
+window.isClosedProcess = isClosedProcess;
+window.isStaleProcess = isStaleProcess;
 window.loadDashboardStats = loadDashboardStats;
 window.resizeDashboardCharts = function() {
-  if (chartRegiao) {
-    try {
-      chartRegiao.resize();
-      chartRegiao.update('none');
-    } catch (e) {
-      console.warn('Erro ao redimensionar chartRegiao:', e);
-    }
-  }
-  if (chartTipoProf) {
-    try {
-      chartTipoProf.resize();
-      chartTipoProf.update('none');
-    } catch (e) {
-      console.warn('Erro ao redimensionar chartTipoProf:', e);
-    }
-  }
+  if (typeof window.invalidateCearaMap === 'function') window.invalidateCearaMap();
 };

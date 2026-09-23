@@ -156,3 +156,72 @@ function showAlert(message, type = 'error') {
 window.showToast = showToast;
 window.showAlert = showAlert;
 
+// --- Helpers de apresentação ---
+function fmtNum(n) {
+  return (Number(n) || 0).toLocaleString('pt-BR');
+}
+
+function plural(n, um, varios) {
+  return `${fmtNum(n)} ${Number(n) === 1 ? um : varios}`;
+}
+
+// Contador discreto ao lado de um item do menu lateral (vazio quando zero)
+function setNavCount(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value ? fmtNum(value) : '';
+}
+
+// Etiqueta de situação a partir de um texto livre (OCUPADA, ATIVO, SOBRESTADO...)
+function statusTag(text) {
+  const raw = (text || '').toString().trim();
+  if (!raw) return '<span class="muted">—</span>';
+  const s = normStr(raw);
+  let cls = 'plain';
+  // A ordem importa: "desocupada" contém "ocupada" e "inativo" contém "ativo"
+  if (/sobrestad|desocupad|rejeitad|recusad|inativ|desligad|arquivad/.test(s)) cls = 'danger';
+  else if (/analise|pendente|processo|andamento/.test(s)) cls = 'warn';
+  else if (/concluid|ocupada|aprovad|^ativ|validad/.test(s)) cls = 'ok';
+  const label = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  return `<span class="tag ${cls}">${escapeHTML(label)}</span>`;
+}
+
+// Converte texto em MAIÚSCULAS para "Primeira maiúscula" preservando siglas curtas
+function titleCase(str) {
+  if (!str) return '';
+  const small = ['de', 'da', 'do', 'das', 'dos', 'e'];
+  return String(str).toLowerCase().split(/\s+/).map((w, i) => {
+    if (i > 0 && small.includes(w)) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(' ');
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(String(dateStr).length === 10 ? dateStr + 'T00:00:00' : dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(String(dateStr).length === 10 ? dateStr + 'T00:00:00' : dateStr);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
+}
+
+// Lista de detalhes (dt/dd) usada nas gavetas
+function detailsList(rows) {
+  return '<dl class="details">' + rows.map(([label, value, raw]) => {
+    const empty = value === null || value === undefined || value === '' || value === '-';
+    const content = empty ? 'Não informado' : (raw ? value : escapeHTML(String(value)));
+    return `<dt>${escapeHTML(label)}</dt><dd${empty ? ' class="muted"' : ''}>${content}</dd>`;
+  }).join('') + '</dl>';
+}
+
+function emptyRow(colspan, title, hint, action) {
+  return `<tr><td colspan="${colspan}"><div class="empty-state"><b>${escapeHTML(title)}</b>${hint ? escapeHTML(hint) : ''}${action || ''}</div></td></tr>`;
+}
+
+window.fmtNum = fmtNum;
+window.setNavCount = setNavCount;
+window.statusTag = statusTag;
+
