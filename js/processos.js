@@ -4,10 +4,6 @@
 
 window.processosData = [];
 
-// Instâncias dos gráficos para atualização
-let chartProcStatus = null;
-let chartProcEquipes = null;
-let chartProcInteressados = null;
 
 function matchMedicoProcesso(docName, processo) {
   if (!docName || !processo) return false;
@@ -64,9 +60,10 @@ async function loadProcessos() {
     updateProcessosDashboard(window.processosData);
     populateEquipesFilter(window.processosData);
     if (typeof window.renderProcessInsights === 'function') window.renderProcessInsights();
+    if (typeof window.refreshRegionReport === 'function') window.refreshRegionReport();
   } catch (err) {
     console.error('Erro ao buscar processos:', err);
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar processos: ${escapeHTML(err.message)}</td></tr>`;
+    tbody.innerHTML = emptyRow(7, 'Erro ao carregar processos', err.message);
   }
 }
 
@@ -136,6 +133,7 @@ function updateProcessosDashboard(data) {
   if (elConcluido) elConcluido.textContent = concluido;
   if (elMedicos) elMedicos.textContent = medicosCount;
   if (elOrgaos) elOrgaos.textContent = orgaosCount;
+  setNavCount('navCountProcessos', sobrestado);
 
   // Gráfico 1: Status
   updateProcStatusChart(statusMap);
@@ -148,248 +146,119 @@ function updateProcessosDashboard(data) {
 }
 
 
+function renderStack(stackId, legendId, entries) {
+  const stack = document.getElementById(stackId);
+  const legend = document.getElementById(legendId);
+  const total = entries.reduce((s, e) => s + e[1], 0);
+  if (stack) stack.innerHTML = total ? entries.filter(e => e[1] > 0).map(([label, n, color]) => `<i style="flex:${n};background:${color}" title="${escapeHTML(label)}: ${fmtNum(n)}"></i>`).join('') : '';
+  if (legend) legend.innerHTML = entries.map(([label, n, color]) => `<span><i class="sw" style="background:${color}"></i>${escapeHTML(label)} <b>${fmtNum(n)}</b></span>`).join('');
+}
+
+// Situação dos processos (barra empilhada)
 function updateProcStatusChart(statusMap) {
-  const ctx = document.getElementById('chartProcStatus');
-  if (!ctx) return;
-
-  const labels = Object.keys(statusMap);
-  const values = Object.values(statusMap);
-
-  const colors = [
-    '#f59e0b', // Amber (Em Análise)
-    '#ef4444', // Red (Sobrestado)
-    '#10b981', // Emerald (Concluído)
-    '#3b82f6', // Blue (Em Andamento)
-    '#14b8a6', // Teal
-    '#64748b'  // Slate
-  ];
-
-  if (chartProcStatus) {
-    chartProcStatus.data.labels = labels;
-    chartProcStatus.data.datasets[0].data = values;
-    chartProcStatus.update();
-  } else {
-    chartProcStatus = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colors.slice(0, labels.length),
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
-          }
-        }
-      }
-    });
-  }
+  const palette = s => {
+    const n = normStr(s);
+    if (n.includes('analise')) return 'var(--warn)';
+    if (n.includes('sobrestado')) return 'var(--danger)';
+    if (n.includes('concluido')) return 'var(--brand)';
+    if (n.includes('andamento')) return 'var(--brand-2)';
+    return 'var(--m-e)';
+  };
+  const entries = Object.entries(statusMap).sort((a, b) => b[1] - a[1]).map(([s, n]) => [titleCase(s), n, palette(s)]);
+  renderStack('procStatusStack', 'procStatusLegend', entries);
 }
 
-
+// Tipo de interessado (médicos x órgãos)
 function updateProcInteressadosChart(medicosCount, orgaosCount) {
-  const ctx = document.getElementById('chartProcInteressados');
-  if (!ctx) return;
-
-  const labels = ['Médicos / Profissionais', 'Órgãos Públicos / Secretarias'];
-  const values = [medicosCount, orgaosCount];
-  const colors = ['#2389c7', '#14b8a6'];
-
-  if (chartProcInteressados) {
-    chartProcInteressados.data.datasets[0].data = values;
-    chartProcInteressados.update();
-  } else {
-    chartProcInteressados = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colors,
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
-          }
-        }
-      }
-    });
-  }
+  renderStack('procIntStack', 'procIntLegend', [
+    ['Médicos', medicosCount, 'var(--brand-2)'],
+    ['Órgãos / secretarias', orgaosCount, 'var(--m-c)']
+  ]);
 }
 
-
-
+// Equipes responsáveis (barras horizontais, top 7)
 function updateProcEquipesChart(equipeMap) {
-  const ctx = document.getElementById('chartProcEquipes');
-  if (!ctx) return;
-
-  // Ordenar equipes por quantidade (top 7)
-  const sorted = Object.entries(equipeMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 7);
-
-  const labels = sorted.map(x => x[0]);
-  const values = sorted.map(x => x[1]);
-
-  if (chartProcEquipes) {
-    chartProcEquipes.data.labels = labels;
-    chartProcEquipes.data.datasets[0].data = values;
-    chartProcEquipes.update();
-  } else {
-    chartProcEquipes = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Qtd. Processos',
-          data: values,
-          backgroundColor: 'rgba(6, 182, 212, 0.75)',
-          borderColor: '#06b6d4',
-          borderWidth: 1,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y', // Bar gráfico horizontal
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          x: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
-          },
-          y: {
-            grid: { display: false },
-            ticks: { color: '#f1f5f9', font: { family: 'Inter', size: 11, weight: '500' } }
-          }
-        }
-      }
-    });
+  const sorted = Object.entries(equipeMap).sort((a, b) => b[1] - a[1]).slice(0, 7);
+  if (typeof renderRankList === 'function') {
+    renderRankList('procEquipesRank', sorted, label => {
+      const sel = document.getElementById('filterProcEquipe');
+      if (sel) { sel.value = label; filterProcessos(); sel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }, 'Nenhum processo cadastrado.');
   }
 }
 
 
+function staleCell(p) {
+  const closed = normStr(p.status_processo || '').match(/concluido|arquivado/);
+  const days = daysSince(p.data_ultima_movimentacao || p.data_recebimento);
+  const date = p.data_ultima_movimentacao ? fmtDate(p.data_ultima_movimentacao) : '—';
+  if (days === null || closed) return `<span class="muted">${date}</span>`;
+  const style = days > 90 ? 'color:var(--danger);font-weight:600' : days > 30 ? 'color:var(--warn);font-weight:600' : 'color:var(--ink-3)';
+  return `${date}<div class="cell-sub" style="${style}">há ${plural(days, 'dia', 'dias')}</div>`;
+}
 
 function renderProcessosTable(data) {
   const tbody = document.getElementById('processosTableBody');
+  const count = document.getElementById('processosCount');
   if (!tbody) return;
+  if (count) count.textContent = `${fmtNum((data || []).length)} de ${fmtNum((window.processosData || []).length)} processos`;
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align:center; padding:3.5rem 1rem;">
-          <div style="max-width:320px; margin:0 auto; color:var(--text-muted);">
-            <i class="fas fa-gavel" style="font-size:2.2rem; opacity:0.4; margin-bottom:0.75rem; display:block;"></i>
-            <div style="font-weight:600; color:var(--text-primary); font-size:1rem; margin-bottom:0.25rem;">Nenhum processo encontrado</div>
-            <div style="font-size:0.85rem; margin-bottom:1rem;">Nenhum processo administrativo corresponde à busca.</div>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('btnLimparFiltrosProc')?.click()"><i class="fas fa-undo"></i> Limpar filtros</button>
-          </div>
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = emptyRow(7, 'Nenhum processo encontrado', 'Nenhum processo corresponde à busca. ',
+      '<div style="margin-top:10px"><button class="btn btn-sm" onclick="document.getElementById(\'btnLimparFiltrosProc\')?.click()">Limpar filtros</button></div>');
     return;
   }
 
-  tbody.innerHTML = '';
-  data.forEach(p => {
-    const tr = document.createElement('tr');
-
-    let badgeClass = 'badge-pending';
-    const st = (p.status_processo || '').toUpperCase();
-    if (st === 'CONCLUÍDO' || st === 'CONCLUIDO') badgeClass = 'badge-approved';
-    else if (st === 'ARQUIVADO') badgeClass = 'badge-rejected';
-    else if (st === 'EM ANÁLISE' || st === 'EM ANALISE') badgeClass = 'badge-pending';
-    else if (st === 'SOBRESTADO') badgeClass = 'badge-rejected';
-    else if (st === 'PENDENTE') badgeClass = 'badge-pending';
-
-    const dataMov = p.data_ultima_movimentacao ? new Date(p.data_ultima_movimentacao + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
-
-    tr.innerHTML = `
-      <td>
-        <div style="font-weight:600; color:var(--text-primary); font-family:monospace; font-size:0.85rem">${escapeHTML(p.numero_sei || '-')}</div>
-      </td>
-      <td>${escapeHTML(p.equipe_responsavel || '-')}</td>
-      <td>
-        <div>${escapeHTML(p.municipio || '-')}</div>
-        <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(p.uf || '-')}</div>
-      </td>
-      <td style="max-width:200px">
-        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${escapeHTML(p.interessado || '-')}</div>
-      </td>
-      <td style="font-size:0.85rem; color:var(--text-secondary)">${dataMov}</td>
-      <td><span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span></td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="viewProcessoDetails('${escapeHTML(p.id)}')" title="Ver Detalhes">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+  tbody.innerHTML = data.map(p => {
+    const demanda = typeof window.getProcessDemandType === 'function' ? window.getProcessDemandType(p) : (p.tipo_demanda || 'OUTROS');
+    return `<tr class="click" data-id="${escapeHTML(String(p.id))}">
+      <td class="mono" style="white-space:nowrap">${escapeHTML(p.numero_sei || '—')}</td>
+      <td>${escapeHTML(p.equipe_responsavel || '—')}</td>
+      <td>${escapeHTML(titleCase(p.municipio || '—'))}</td>
+      <td style="max-width:240px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeHTML(p.interessado || '')}">${escapeHTML(p.interessado || '—')}</div>${p.vinculo_medico ? `<div class="cell-sub">${escapeHTML(p.vinculo_medico)}</div>` : ''}</td>
+      <td class="muted">${escapeHTML(titleCase(demanda))}</td>
+      <td class="r" style="white-space:nowrap">${staleCell(p)}</td>
+      <td>${statusTag(p.status_processo)}</td>
+    </tr>`;
+  }).join('');
 }
+
+document.addEventListener('click', (e) => {
+  const tr = e.target.closest('#processosTableBody tr[data-id]');
+  if (tr) window.viewProcessoDetails(tr.dataset.id);
+});
 
 
 window.viewProcessoDetails = function(id) {
-  const p = window.processosData.find(x => x.id === id);
+  const p = (window.processosData || []).find(x => String(x.id) === String(id));
   if (!p) return;
 
   const modalBody = document.getElementById('modalProcessoBody');
   const modal = document.getElementById('modalProcesso');
+  const title = document.getElementById('modalProcessoTitle');
   if (!modalBody || !modal) return;
 
-  const dataReceb = p.data_recebimento ? new Date(p.data_recebimento + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
-  const dataMov = p.data_ultima_movimentacao ? new Date(p.data_ultima_movimentacao + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
-
-  let badgeClass = 'badge-pending';
-  const st = (p.status_processo || '').toUpperCase();
-  if (st === 'CONCLUÍDO' || st === 'CONCLUIDO') badgeClass = 'badge-approved';
-  else if (st === 'ARQUIVADO' || st === 'SOBRESTADO') badgeClass = 'badge-rejected';
+  if (title) title.innerHTML = `<span class="mono" style="font-size:16px">${escapeHTML(p.numero_sei || 'Processo')}</span>`;
+  const days = daysSince(p.data_ultima_movimentacao);
 
   modalBody.innerHTML = `
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem">
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Identificação</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Nº Processo SEI:</span> <span style="color:var(--text-primary); font-weight:600; font-family:monospace">${escapeHTML(p.numero_sei || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Equipe Responsável:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(p.equipe_responsavel || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Data Recebimento:</span> <span style="color:var(--text-primary)">${dataReceb}</span></div>
-          <div><span style="color:var(--text-secondary)">UF:</span> <span style="color:var(--text-primary)">${escapeHTML(p.uf || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Município:</span> <span style="color:var(--text-primary)">${escapeHTML(p.municipio || '-')}</span></div>
-        </div>
-      </div>
-
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Processo</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Interessado:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(p.interessado || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Tipo de Demanda:</span> <span class="badge badge-info">${escapeHTML(p.tipo_demanda || 'OUTROS')}</span></div>
-          <div><span style="color:var(--text-secondary)">Vínculo Médico:</span> <span style="color:var(--text-primary)">${escapeHTML(p.vinculo_medico || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Última Movimentação:</span> <span style="color:var(--text-primary)">${dataMov}</span></div>
-          <div><span style="color:var(--text-secondary)">Status:</span> <span class="badge ${badgeClass}">${escapeHTML(p.status_processo || '-')}</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-      <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Descrição da Demanda</h4>
-      <p style="font-size:0.9rem; color:var(--text-primary); line-height:1.6; white-space:pre-wrap">${escapeHTML(p.descricao_demanda || 'Sem descrição registrada.')}</p>
-    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px">${statusTag(p.status_processo)}<span class="tag info">${escapeHTML(titleCase(p.tipo_demanda || 'Outros'))}</span></div>
+    <div class="dsec">Identificação</div>
+    ${detailsList([
+      ['Nº processo SEI', p.numero_sei ? `<span class="mono">${escapeHTML(p.numero_sei)}</span>` : '', true],
+      ['Equipe responsável', p.equipe_responsavel],
+      ['Recebido em', fmtDate(p.data_recebimento)],
+      ['Município', p.municipio ? `${titleCase(p.municipio)} · ${p.uf || ''}` : '']
+    ])}
+    <div class="dsec">Andamento</div>
+    ${detailsList([
+      ['Interessado', p.interessado],
+      ['Vínculo do médico', p.vinculo_medico],
+      ['Última movimentação', p.data_ultima_movimentacao ? `${fmtDate(p.data_ultima_movimentacao)}${days !== null ? ` (há ${plural(days, 'dia', 'dias')})` : ''}` : ''],
+      ['Situação', p.status_processo]
+    ])}
+    <div class="dsec">Descrição da demanda</div>
+    <div class="desc-box">${escapeHTML(p.descricao_demanda || 'Sem descrição registrada.')}</div>
   `;
 
   modal.classList.add('active');
@@ -402,7 +271,6 @@ function populateEquipesFilter(data) {
 
   const currentVal = select.value;
   const equipes = new Set();
-
   data.forEach(p => {
     if (p.equipe_responsavel) {
       const eq = p.equipe_responsavel.trim().toUpperCase();
@@ -411,9 +279,9 @@ function populateEquipesFilter(data) {
   });
 
   const sortedEquipes = Array.from(equipes).sort();
-  select.innerHTML = '<option value="" style="background: #0b2236; color: #fff;">Todas as Equipes</option>' +
-    sortedEquipes.map(eq => `<option value="${escapeHTML(eq)}" style="background: #0b2236; color: #fff;">${escapeHTML(eq)}</option>`).join('');
-  
+  select.innerHTML = '<option value="">Todas as equipes</option>' +
+    sortedEquipes.map(eq => `<option value="${escapeHTML(eq)}">${escapeHTML(eq)}</option>`).join('');
+
   if (currentVal && equipes.has(currentVal)) {
     select.value = currentVal;
   }

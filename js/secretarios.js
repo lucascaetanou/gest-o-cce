@@ -31,6 +31,7 @@ async function loadSecretarios() {
     // Se não veio do Supabase ainda, usa base local completa de 184 secretários
     window.secretariosData = (data && data.length > 0) ? data : SECRETARIOS_EMBEDDED_DATA;
     window.currentFilteredSecretarios = window.secretariosData;
+    setNavCount('navCountSecretarios', window.secretariosData.length);
 
     populateSecretarioFilters(window.secretariosData);
     setupSecretarioFilters();
@@ -155,83 +156,31 @@ function renderSecretariosTable(data) {
   const countBadge = document.getElementById('secretariosCountBadge');
   if (!tbody) return;
 
-  if (countBadge) {
-    const total = (window.secretariosData || []).length;
-    countBadge.textContent = `${data.length} de ${total} municípios`;
-  }
+  if (countBadge) countBadge.textContent = `${fmtNum(data.length)} de ${fmtNum((window.secretariosData || []).length)} municípios`;
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; padding:3.5rem 1rem;">
-          <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
-            <i class="fas fa-search" style="font-size:2rem; color:var(--text-muted); opacity:0.5;"></i>
-            <div style="font-weight:600; color:var(--text-primary); font-size:1rem;">Nenhum secretário ou município encontrado</div>
-            <div style="font-size:0.85rem; color:var(--text-muted); max-width:350px;">Tente ajustar ou limpar os filtros de busca pesquisados.</div>
-            <button class="btn btn-ghost btn-sm" style="margin-top:0.5rem; border:1px solid var(--border);" onclick="limparFiltrosSecretarios()">
-              <i class="fas fa-undo" style="margin-right:0.35rem;"></i> Limpar Filtros
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = emptyRow(6, 'Nenhum secretário ou município encontrado', 'Ajuste ou limpe os filtros. ',
+      '<div style="margin-top:10px"><button class="btn btn-sm" onclick="limparFiltrosSecretarios()">Limpar filtros</button></div>');
     return;
   }
 
-  tbody.innerHTML = '';
-
-  data.forEach(s => {
-    const tr = document.createElement('tr');
-
-    const mun = escapeHTML(s.municipio || '-');
-    const nome = escapeHTML(s.nome_secretario || 'Não informado');
-    const email = s.email ? escapeHTML(s.email) : '-';
-    const regiao = s.regiao_saude ? `<span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:2px;">${escapeHTML(s.regiao_saude)}</span>` : '';
+  tbody.innerHTML = data.map(s => {
     const ativos = s.medicos_ativos || 0;
     const desoc = s.vagas_desocupadas || 0;
-
-    let emailCol = '-';
-    if (s.email) {
-      const firstEmail = s.email.split('/')[0].trim();
-      emailCol = `
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-          <a href="mailto:${escapeHTML(firstEmail)}" style="color:var(--accent-secondary); text-decoration:none; font-size:0.85rem;" title="Enviar e-mail">
-            <i class="fas fa-envelope" style="margin-right:4px;"></i>${email}
-          </a>
-          <button class="btn btn-ghost btn-sm" style="padding:0.2rem 0.4rem; font-size:0.7rem;" title="Copiar e-mail" onclick="navigator.clipboard.writeText('${escapeHTML(s.email)}'); if(typeof showAlert==='function') showAlert('E-mail copiado!','success');">
-            <i class="fas fa-copy"></i>
-          </button>
-        </div>
-      `;
-    }
-
-    let badgeDesoc = `<span class="badge badge-approved" style="font-size:0.75rem;">0</span>`;
-    if (desoc > 0) {
-      badgeDesoc = `<span class="badge badge-rejected" style="font-size:0.75rem;">${desoc} ${desoc === 1 ? 'vaga' : 'vagas'}</span>`;
-    }
-
-    tr.innerHTML = `
-      <td>
-        <strong style="color:var(--text-primary); font-size:0.92rem;">${mun}</strong>
-        ${regiao}
-      </td>
-      <td>
-        <div style="font-weight:500; color:var(--text-primary); font-size:0.9rem;">${nome}</div>
-        <div style="font-size:0.75rem; color:var(--accent-primary); margin-top:1px;">Secretário(a) Municipal de Saúde</div>
-      </td>
-      <td>${emailCol}</td>
-      <td style="text-align:center;">
-        <span class="badge badge-primary" style="font-size:0.75rem;">${ativos} ${ativos === 1 ? 'médico' : 'médicos'}</span>
-      </td>
-      <td style="text-align:center;">${badgeDesoc}</td>
-      <td style="text-align:center;">
-        <button class="btn btn-ghost btn-sm" style="border:1px solid var(--border); font-size:0.78rem;" onclick="verMedicosDoMunicipio('${escapeHTML(s.municipio)}')">
-          <i class="fas fa-user-md" style="margin-right:0.3rem; color:var(--accent-primary)"></i> Ver Médicos
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+    const emails = (s.email || '').split('/').map(e => e.trim()).filter(Boolean);
+    const contato = emails.length
+      ? emails.map(e => `<div style="display:flex;align-items:center;gap:4px"><a href="mailto:${escapeHTML(e)}" style="text-decoration:none">${escapeHTML(e)}</a>
+          <button class="icon-btn" title="Copiar e-mail" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(e)}')); showToast('E-mail copiado', 'success')"><i class="fas fa-copy"></i></button></div>`).join('')
+      : '<span class="muted">—</span>';
+    return `<tr>
+      <td><div class="cell-main">${escapeHTML(titleCase(s.municipio || '—'))}</div><div class="cell-sub">${escapeHTML(titleCase(s.regiao_saude || ''))}</div></td>
+      <td>${escapeHTML(s.nome_secretario || 'Não informado')}</td>
+      <td>${contato}</td>
+      <td class="r">${fmtNum(ativos)}</td>
+      <td class="r">${desoc ? `<b class="alert-num">${fmtNum(desoc)}</b>` : '<span class="muted">0</span>'}</td>
+      <td class="r"><button class="lnk" type="button" onclick="verMedicosDoMunicipio(decodeURIComponent('${encodeURIComponent(s.municipio || '')}'))">Ver médicos</button></td>
+    </tr>`;
+  }).join('');
 }
 
 // Navegação rápida: abre a aba de médicos já filtrada para o município

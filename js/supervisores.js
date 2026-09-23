@@ -18,6 +18,7 @@ async function loadSupervisores() {
     if (error) throw error;
     
     window.supervisoresData = data || [];
+    setNavCount('navCountSupervisores', window.supervisoresData.length);
     window.currentFilteredSupervisores = window.supervisoresData;
     populateSupervisorFilters(window.supervisoresData);
     setupSupervisorFilters();
@@ -25,7 +26,7 @@ async function loadSupervisores() {
     
   } catch (err) {
     console.error('Erro ao buscar supervisores:', err);
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--accent-danger); padding:3rem">Erro ao carregar supervisores: ${escapeHTML(err.message)}</td></tr>`;
+    tbody.innerHTML = emptyRow(4, 'Erro ao carregar supervisores', err.message);
   }
 }
 
@@ -34,62 +35,27 @@ function renderSupervisoresTable(data) {
   const countBadge = document.getElementById('supervisoresCountBadge');
   if (!tbody) return;
 
-  if (countBadge) {
-    const total = window.supervisoresData.length;
-    countBadge.textContent = `${data.length} de ${total} registros`;
-  }
+  if (countBadge) countBadge.textContent = `${fmtNum(data.length)} de ${fmtNum(window.supervisoresData.length)} supervisores`;
 
   if (!data || data.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align:center; padding:3.5rem 1rem;">
-          <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
-            <i class="fas fa-search" style="font-size:2rem; color:var(--text-muted); opacity:0.5;"></i>
-            <div style="font-weight:600; color:var(--text-primary); font-size:1rem;">Nenhum supervisor encontrado</div>
-            <div style="font-size:0.85rem; color:var(--text-muted); max-width:350px;">Tente ajustar ou limpar os termos de busca e filtros selecionados.</div>
-            <button class="btn btn-ghost btn-sm" style="margin-top:0.5rem; border:1px solid var(--border);" onclick="limparFiltrosSupervisores()">
-              <i class="fas fa-undo" style="margin-right:0.35rem;"></i> Limpar Filtros
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
+    tbody.innerHTML = emptyRow(4, 'Nenhum supervisor encontrado', 'Ajuste ou limpe os filtros. ',
+      '<div style="margin-top:10px"><button class="btn btn-sm" onclick="limparFiltrosSupervisores()">Limpar filtros</button></div>');
     return;
   }
-  
-  tbody.innerHTML = '';
-  data.forEach(sup => {
-    const tr = document.createElement('tr');
-    
-    // badges status
-    let badgeClass = 'badge-pending';
-    let badgeText = escapeHTML(sup.situacao || 'Desconhecido');
-    if (badgeText.toLowerCase().includes('ativo') || badgeText.toLowerCase().includes('validado')) badgeClass = 'badge-approved';
-    else if (badgeText.toLowerCase().includes('inativo') || badgeText.toLowerCase().includes('desligado')) badgeClass = 'badge-rejected';
-    
-    tr.innerHTML = `
-      <td>
-        <div style="font-weight:600; color:var(--text-primary)">${escapeHTML(sup.nome_supervisor || '-')}</div>
-        <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(sup.email || '-')}</div>
-      </td>
-      <td>
-        <div style="font-weight:500">${escapeHTML(sup.sigla_inst || sup.inst_supervisora || '-')}</div>
-        <div style="font-size:0.8rem; color:var(--text-muted)">${escapeHTML(sup.uf_inst || sup.regiao_inst || '')}</div>
-      </td>
-      <td>
-        <div>${escapeHTML(sup.telefone_1 || '-')}</div>
-        <div style="font-size:0.75rem; color:var(--text-muted)">${escapeHTML(sup.tipo_tel_1 || '')}</div>
-      </td>
-      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="showSupervisorDetails('${escapeHTML(sup.id)}')" title="Ver Detalhes">
-          <i class="fas fa-eye"></i>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+
+  tbody.innerHTML = data.map(sup => `
+    <tr class="click" data-id="${escapeHTML(String(sup.id))}">
+      <td><div class="cell-main">${escapeHTML(sup.nome_supervisor || '—')}</div><div class="cell-sub">${escapeHTML(sup.email || '')}</div></td>
+      <td>${escapeHTML(sup.sigla_inst || sup.inst_supervisora || '—')}<div class="cell-sub">${escapeHTML(sup.uf_inst || sup.regiao_inst || '')}</div></td>
+      <td style="white-space:nowrap">${escapeHTML(sup.telefone_1 || '—')}<div class="cell-sub">${escapeHTML(sup.tipo_tel_1 || '')}</div></td>
+      <td>${statusTag(sup.situacao)}</td>
+    </tr>`).join('');
 }
+
+document.addEventListener('click', (e) => {
+  const tr = e.target.closest('#supervisoresTableBody tr[data-id]');
+  if (tr) window.showSupervisorDetails(tr.dataset.id);
+});
 
 function populateSupervisorFilters(data) {
   if (!data) return;
@@ -289,46 +255,37 @@ window.limparFiltrosSupervisores = function() {
   if (selectSituacao) selectSituacao.value = '';
 
   filterSupervisores();
-  if (window.showToast) window.showToast('Filtros de supervisores limpos', 'info');
 };
 
 window.showSupervisorDetails = function(id) {
-  const sup = window.supervisoresData.find(s => s.id === id);
+  const sup = window.supervisoresData.find(s => String(s.id) === String(id));
   if (!sup) return;
-  
+
   const modalBody = document.getElementById('modalSupervisorBody');
   const modal = document.getElementById('modalSupervisor');
+  const title = document.getElementById('modalSupervisorTitle');
   if (!modalBody || !modal) return;
-  
-  modalBody.innerHTML = `
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem">
-      <!-- INFO BÁSICA -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Informações Pessoais</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Nome:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(sup.nome_supervisor || '-')}</span></div>
 
-          <div><span style="color:var(--text-secondary)">E-mail:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.email || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Tel 1:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.telefone_1 || '-')}</span> <small style="color:var(--text-muted)">(${escapeHTML(sup.tipo_tel_1 || '-')})</small></div>
-          <div><span style="color:var(--text-secondary)">Tel 2:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.telefone_2 || '-')}</span> <small style="color:var(--text-muted)">(${escapeHTML(sup.tipo_tel_2 || '-')})</small></div>
-          <div><span style="color:var(--text-secondary)">Tel 3:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.telefone_3 || '-')}</span> <small style="color:var(--text-muted)">(${escapeHTML(sup.tipo_tel_3 || '-')})</small></div>
-        </div>
-      </div>
-      
-      <!-- INSTITUIÇÃO E SITUAÇÃO -->
-      <div style="background:var(--bg-secondary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border)">
-        <h4 style="color:var(--accent-info); font-size:0.9rem; font-weight:600; margin-bottom:1rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); padding-bottom:0.5rem">Instituição e Situação</h4>
-        <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.85rem">
-          <div><span style="color:var(--text-secondary)">Inst. Supervisora:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(sup.inst_supervisora || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Sigla / UF:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.sigla_inst || '-')} / ${escapeHTML(sup.uf_inst || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Região Inst.:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.regiao_inst || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Validado:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.validado || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Situação:</span> <span style="color:var(--text-primary); font-weight:500">${escapeHTML(sup.situacao || '-')}</span></div>
-          <div><span style="color:var(--text-secondary)">Atualizado:</span> <span style="color:var(--text-primary)">${escapeHTML(sup.atualizado || '-')} (${escapeHTML(sup.data_atualizacao || '-')})</span></div>
-        </div>
-      </div>
-    </div>
+  const tel = (n, t) => n ? `${n}${t ? ` (${t})` : ''}` : '';
+  if (title) title.textContent = sup.nome_supervisor || 'Supervisor';
+  modalBody.innerHTML = `
+    <div style="margin:12px 0 4px">${statusTag(sup.situacao)}</div>
+    <div class="dsec">Contato</div>
+    ${detailsList([
+      ['E-mail', sup.email ? `<a href="mailto:${escapeHTML(sup.email)}">${escapeHTML(sup.email)}</a>` : '', true],
+      ['Telefone 1', tel(sup.telefone_1, sup.tipo_tel_1)],
+      ['Telefone 2', tel(sup.telefone_2, sup.tipo_tel_2)],
+      ['Telefone 3', tel(sup.telefone_3, sup.tipo_tel_3)]
+    ])}
+    <div class="dsec">Instituição</div>
+    ${detailsList([
+      ['Instituição supervisora', sup.inst_supervisora],
+      ['Sigla / UF', [sup.sigla_inst, sup.uf_inst].filter(Boolean).join(' · ')],
+      ['Região', sup.regiao_inst],
+      ['Validado', sup.validado],
+      ['Atualizado', [sup.atualizado, sup.data_atualizacao].filter(Boolean).join(' · ')]
+    ])}
   `;
-  
+
   modal.classList.add('active');
 };

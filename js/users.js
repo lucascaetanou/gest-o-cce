@@ -12,7 +12,7 @@ async function loadUsers() {
   const loadingRow = document.createElement('tr');
   const loadingCell = document.createElement('td');
   loadingCell.colSpan = 5;
-  loadingCell.style.cssText = 'text-align:center; color:var(--text-muted); padding:3rem;';
+  loadingCell.className = 'loading-cell';
   loadingCell.textContent = 'Carregando usuários...';
   loadingRow.appendChild(loadingCell);
   tbody.appendChild(loadingRow);
@@ -27,16 +27,19 @@ async function loadUsers() {
 
     tbody.innerHTML = '';
 
+    // Pendentes primeiro, depois os demais (mais recentes antes)
+    const order = { PENDING: 0, APPROVED: 1, REJECTED: 2 };
     const nonAdminUsers = (users || []).filter(u => {
       const r = (u.role || '').toUpperCase();
       return r !== 'ADMIN';
-    });
+    }).sort((a, b) => (order[a.status] ?? 0) - (order[b.status] ?? 0));
+    setNavCount('navCountUsers', nonAdminUsers.filter(u => u.status === 'PENDING').length);
     
     if (nonAdminUsers.length === 0) {
       const emptyRow = document.createElement('tr');
       const emptyCell = document.createElement('td');
       emptyCell.colSpan = 5;
-      emptyCell.style.cssText = 'text-align:center; color:var(--text-muted); padding:3rem;';
+      emptyCell.className = 'loading-cell';
       emptyCell.textContent = 'Nenhum usuário pendente ou cadastrado no momento.';
       emptyRow.appendChild(emptyCell);
       tbody.appendChild(emptyRow);
@@ -48,11 +51,13 @@ async function loadUsers() {
 
       // Name
       const tdName = document.createElement('td');
+      tdName.className = 'cell-main';
       tdName.textContent = user.name || user.full_name || '-';
       tr.appendChild(tdName);
 
       // Email
       const tdEmail = document.createElement('td');
+      tdEmail.className = 'muted';
       tdEmail.textContent = user.email || '-';
       tr.appendChild(tdEmail);
 
@@ -65,13 +70,13 @@ async function loadUsers() {
       const tdStatus = document.createElement('td');
       const badge = document.createElement('span');
       if (user.status === 'APPROVED') {
-        badge.className = 'badge badge-approved';
+        badge.className = 'tag ok';
         badge.textContent = 'Aprovado';
       } else if (user.status === 'REJECTED') {
-        badge.className = 'badge badge-rejected';
-        badge.textContent = 'Rejeitado';
+        badge.className = 'tag danger';
+        badge.textContent = 'Recusado';
       } else {
-        badge.className = 'badge badge-pending';
+        badge.className = 'tag warn';
         badge.textContent = 'Pendente';
       }
       tdStatus.appendChild(badge);
@@ -79,7 +84,10 @@ async function loadUsers() {
 
       // Actions
       const tdActions = document.createElement('td');
-      tdActions.style.cssText = 'display:flex; gap:0.5rem;';
+      tdActions.className = 'r';
+      const actionsWrap = document.createElement('div');
+      actionsWrap.className = 'row-actions';
+      tdActions.appendChild(actionsWrap);
 
       if (user.status === 'PENDING') {
         const btnApprove = document.createElement('button');
@@ -89,16 +97,16 @@ async function loadUsers() {
 
         const btnReject = document.createElement('button');
         btnReject.className = 'btn btn-sm btn-danger';
-        btnReject.textContent = 'Rejeitar';
+        btnReject.textContent = 'Recusar';
         btnReject.addEventListener('click', () => updateStatus(user.id, 'REJECTED'));
 
-        tdActions.appendChild(btnApprove);
-        tdActions.appendChild(btnReject);
+        actionsWrap.appendChild(btnReject);
+        actionsWrap.appendChild(btnApprove);
       } else {
         const resolvedSpan = document.createElement('span');
-        resolvedSpan.style.cssText = 'color:var(--text-muted); font-size:0.8rem;';
+        resolvedSpan.className = 'hint';
         resolvedSpan.textContent = 'Resolvido';
-        tdActions.appendChild(resolvedSpan);
+        actionsWrap.appendChild(resolvedSpan);
       }
 
       tr.appendChild(tdActions);
