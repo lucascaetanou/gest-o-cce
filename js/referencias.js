@@ -144,7 +144,7 @@ function renderReferenciasTable(data) {
       <td>${escapeHTML(titleCase(r.regiao_saude || '—'))}</td>
       <td class="muted">${escapeHTML(r.responsavel || '—')}</td>
       <td>${ivsTag(r.categoria_ivs)}</td>
-      <td class="r">${fmtNum(total)}<div class="cell-sub">${fmtNum(fed)} fed. · ${fmtNum(copart)} copart.</div></td>
+      <td class="r">${fmtNum(total)}${fed + copart ? `<div class="cell-sub">${fmtNum(fed)} fed. · ${fmtNum(copart)} copart.</div>` : ''}</td>
       <td>${total ? occCell(ocup, total) : '<span class="muted">—</span>'}${desoc ? `<div class="cell-sub alert-num">${plural(desoc, 'vaga aberta', 'vagas abertas')}</div>` : ''}</td>
     </tr>`;
   }).join('');

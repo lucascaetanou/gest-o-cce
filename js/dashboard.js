@@ -202,7 +202,8 @@ function getMunicipioStats(keyFn) {
     const key = k(d.municipio_atuacao);
     const s = stats[key] = stats[key] || { nome: d.municipio_atuacao, regiao_saude: d.regiao_saude || '', total: 0, ocup: 0, abertas: 0, emProc: 0, fed: 0, copart: 0 };
     s.total++;
-    if ((d.modalidade || '').toUpperCase().includes('COPARTICIPACAO')) s.copart++; else s.fed++;
+    const mod = (d.modalidade || '').toUpperCase();
+    if (mod.includes('COPARTICIPACAO')) s.copart++; else if (mod) s.fed++;
     if (d.status === 'OCUPADA') s.ocup++;
     else if (d.status === 'DESOCUPADA') s.abertas++;
     else if (d.status === 'EM PROCESSO DE OCUPACAO') s.emProc++;
@@ -247,21 +248,27 @@ function renderDashboardWithCurrentFilter() {
   const emProcesso = ativas.filter(d => d.status === 'EM PROCESSO DE OCUPACAO');
   const federal = ativas.filter(d => d.modalidade && !d.modalidade.toUpperCase().includes('COPARTICIPACAO'));
   const copart = ativas.filter(d => d.modalidade && d.modalidade.toUpperCase().includes('COPARTICIPACAO'));
+  const pmm = ativas.filter(d => (d.gestao || '').toUpperCase() === 'PMM');
+  const agsus = ativas.filter(d => (d.gestao || '').toUpperCase() === 'AGSUS');
   const municipios = new Set(filteredDoctors.map(d => d.municipio_atuacao).filter(Boolean));
 
   const taxa = ativas.length > 0 ? (ocupadas.length / ativas.length) * 100 : 0;
 
   // Indicadores
-  setText('statTaxaOcupacao', `${taxa.toFixed(1).replace('.', ',')}%`);
+  setText('statTaxaOcupacao', `${taxa.toFixed(0)}%`);
   const bar = document.getElementById('statTaxaBar'); if (bar) bar.style.width = `${taxa}%`;
   setText('statTaxaDet', `${fmtNum(ocupadas.length)} de ${fmtNum(ativas.length)} vagas preenchidas`);
   setText('statVagasDesocupadas', fmtNum(desocupadas.length));
   setText('statMedicosAtivos', fmtNum(ocupadas.length));
   setText('statTotalVagas', fmtNum(ativas.length));
-  setText('statVagasDet', (federal.length + copart.length > 0) ? `${fmtNum(federal.length)} fed. + ${fmtNum(copart.length)} copart.` : '');
+  // Mesma regra do painel original: modalidade, depois gestão, depois ocupadas + desocupadas
+  let vagasDet = `${fmtNum(ocupadas.length)} ocup. + ${fmtNum(desocupadas.length)} desoc.`;
+  if (federal.length + copart.length > 0) vagasDet = `${fmtNum(federal.length)} fed. + ${fmtNum(copart.length)} copart.`;
+  else if (pmm.length + agsus.length > 0) vagasDet = `${fmtNum(pmm.length)} PMM + ${fmtNum(agsus.length)} AgSUS`;
+  setText('statVagasDet', vagasDet);
   setText('statProfissionalExtra', fmtNum(emProcesso.length));
   setText('statSecretarios', fmtNum(municipios.size));
-  setText('statSecretariosDet', 'com vagas do programa');
+  setText('statSecretariosDet', plural(municipios.size, 'município', 'municípios'));
 
   const munDesoc = getAlertasRows(selectedRegion).length;
   setText('statMunDesoc', `em ${plural(munDesoc, 'município', 'municípios')}`);

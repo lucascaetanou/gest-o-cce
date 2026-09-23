@@ -284,7 +284,7 @@
       <div class="kv">
         <div><div class="hint">Médicos ativos</div><div class="v">${fmtNum(g.ocup)}</div></div>
         <div><div class="hint">Vagas abertas</div><div class="v alert-num">${fmtNum(g.abertas)}</div></div>
-        <div><div class="hint">Ocupação</div><div class="v">${occ.toFixed(1).replace('.', ',')}%</div><div class="bar" style="margin-top:6px"><i style="width:${occ}%"></i></div></div>
+        <div><div class="hint">Ocupação</div><div class="v">${occ.toFixed(0)}%</div><div class="bar" style="margin-top:6px"><i style="width:${occ}%"></i></div></div>
         <div><div class="hint">Processos em aberto</div><div class="v">${fmtNum(openProcs)}</div></div>
       </div>
       <div class="lbl">Municípios com mais vagas abertas</div>
