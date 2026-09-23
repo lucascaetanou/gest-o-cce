@@ -8,7 +8,7 @@
   <meta name="description" content="Painel de Administração">
   <link rel="icon" type="image/png" href="assets/logo.png?v=6">
   <link rel="stylesheet" crossorigin="anonymous" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css?v=30">
+  <link rel="stylesheet" href="css/style.css?v=31">
 </head>
 <body style="display: none;">
   <div class="admin-layout">
@@ -58,6 +58,10 @@
 
         <!-- Grupo 3: Gestão & SEI -->
         <div class="sidebar-group-label">Gestão & SEI</div>
+        <div class="nav-item" id="navCCE">
+          <i class="fas fa-landmark"></i>
+          <span>Membros da CCE</span>
+        </div>
         <div class="nav-item" id="navProcessos">
           <i class="fas fa-gavel"></i>
           <span>Processos Administrativos</span>
@@ -813,6 +817,121 @@
         </div>
 
         <!-- ========================================== -->
+        <!-- SEÇÃO: MEMBROS DA CCE -->
+        <!-- ========================================== -->
+        <div id="sectionCCE" class="section">
+          
+          <!-- Banner Institucional da CCE -->
+          <div class="cce-hero-banner fade-in" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; position: relative; z-index: 2;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                  <span class="badge badge-primary" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;"><i class="fas fa-landmark" style="margin-right:4px;"></i> Instância Colegiada</span>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Portaria Interministerial MS/MEC nº 604/2023</span>
+                </div>
+                <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-primary); margin: 0 0 0.35rem 0;">Comissão de Coordenação Estadual (CCE - Ceará)</h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; max-width: 780px;">
+                  Composição oficial dos representantes do Projeto Mais Médicos para o Brasil no Ceará. Processos SEI nº <strong>25000.219467/2025-19</strong> / <strong>25000.138003/2026-93</strong> (SEI nº 0057966194).
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.6rem 1rem; text-align: right;">
+                  <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Coordenação CCE/CCD</div>
+                  <div style="font-size: 0.9rem; font-weight: 700; color: #10b981;">Maria Vaudelice Mota</div>
+                  <div style="font-size: 0.72rem; color: var(--text-secondary);">Tutora / Coordenadora (SESA)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filtros e Modos de Exibição -->
+          <div class="table-card" style="margin-bottom: 1.5rem;">
+            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-filter" style="color: var(--accent-primary)"></i> Filtros de Representantes
+                  </span>
+                  <span id="cceCountBadge" style="font-size: 0.78rem; color: var(--text-muted);">14 de 14 representantes</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <!-- Alternar visualização Cards vs Tabela -->
+                  <div style="display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+                    <button class="btn btn-primary btn-sm" id="btnCCEViewCards" title="Modo Cards" style="border-radius: 0; padding: 0.35rem 0.65rem;">
+                      <i class="fas fa-grip" style="margin-right: 4px;"></i> Cards
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btnCCEViewTable" title="Modo Tabela" style="border-radius: 0; padding: 0.35rem 0.65rem;">
+                      <i class="fas fa-table-list" style="margin-right: 4px;"></i> Tabela
+                    </button>
+                  </div>
+
+                  <button class="btn btn-primary btn-sm" id="btnExportCCE" title="Exportar para CSV">
+                    <i class="fas fa-file-export"></i> Exportar CSV
+                  </button>
+                  <button class="btn btn-ghost btn-sm" id="btnLimparFiltrosCCE" style="font-size: 0.8rem;">
+                    <i class="fas fa-undo"></i> Limpar
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+                <div class="input-wrapper" style="width: 100%;">
+                  <input type="text" id="searchCCE" placeholder="Buscar por nome, cargo, e-mail..." style="width: 100%;">
+                  <i class="fas fa-search"></i>
+                </div>
+                <div>
+                  <select id="filterCCEOrgao" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="" style="background: #0b2236; color: #fff;">Todos os Órgãos / Segmentos</option>
+                    <option value="Ministério da Saúde" style="background: #0b2236; color: #fff;">Ministério da Saúde (MS)</option>
+                    <option value="Ministério da Educação" style="background: #0b2236; color: #fff;">Ministério da Educação (MEC)</option>
+                    <option value="Secretaria Estadual de Saúde" style="background: #0b2236; color: #fff;">Secretaria Estadual de Saúde (SESA)</option>
+                    <option value="COSEMS" style="background: #0b2236; color: #fff;">COSEMS/CE</option>
+                    <option value="Educação Superior" style="background: #0b2236; color: #fff;">IES - Ofertas Formativas</option>
+                    <option value="Supervisora" style="background: #0b2236; color: #fff;">Instituição Supervisora (UFCA / UNILAB)</option>
+                    <option value="DSEI" style="background: #0b2236; color: #fff;">Distrito Indígena (DSEI/CE)</option>
+                  </select>
+                </div>
+                <div>
+                  <select id="filterCCETipo" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; outline: none; cursor: pointer;">
+                    <option value="" style="background: #0b2236; color: #fff;">Todas as Titularidades</option>
+                    <option value="TITULAR" style="background: #0b2236; color: #fff;">Apenas Membros Titulares</option>
+                    <option value="SUPLENTE" style="background: #0b2236; color: #fff;">Apenas Membros Suplentes</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conteúdo: Visualização em Cards -->
+          <div id="cceCardsContainer">
+            <!-- Injetado dinamicamente pelo js/cce.js?v=31 -->
+          </div>
+
+          <!-- Conteúdo: Visualização em Tabela -->
+          <div id="cceTableContainer" class="table-card" style="display: none;">
+            <div style="overflow-x: auto;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Titularidade</th>
+                    <th>Nome do Representante</th>
+                    <th>Órgão / Entidade</th>
+                    <th>E-mail Institucional</th>
+                    <th>Telefone</th>
+                    <th style="text-align: center;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="cceTableBody">
+                  <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:3rem">Carregando membros...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ========================================== -->
         <!-- SEÇÃO: PROCESSOS ADMINISTRATIVOS -->
         <!-- ========================================== -->
 
@@ -1244,22 +1363,23 @@
 
   <!-- Configuração e Autenticação -->
   <script src="js/config.js"></script>
-  <script src="js/auth.js?v=30"></script>
+  <script src="js/auth.js?v=31"></script>
 
   <!-- Módulos da Aplicação Gestão CCE -->
   <script src="js/utils.js?v=5"></script>
-  <script src="js/medicos.js?v=30"></script>
-  <script src="js/dashboard.js?v=30"></script>
-  <script src="js/referencias.js?v=30"></script>
-  <script src="js/supervisores.js?v=30"></script>
-  <script src="js/tutores.js?v=30"></script>
-  <script src="js/materiais.js?v=30"></script>
-  <script src="js/secretarios.js?v=30"></script>
-  <script src="js/processos.js?v=30"></script>
-  <script src="js/users.js?v=30"></script>
+  <script src="js/medicos.js?v=31"></script>
+  <script src="js/dashboard.js?v=31"></script>
+  <script src="js/referencias.js?v=31"></script>
+  <script src="js/supervisores.js?v=31"></script>
+  <script src="js/tutores.js?v=31"></script>
+  <script src="js/materiais.js?v=31"></script>
+  <script src="js/secretarios.js?v=31"></script>
+  <script src="js/cce.js?v=31"></script>
+  <script src="js/processos.js?v=31"></script>
+  <script src="js/users.js?v=31"></script>
 
   <!-- Orquestrador Principal -->
-  <script src="js/admin.js?v=30"></script>
+  <script src="js/admin.js?v=31"></script>
   <script src="js/magic-bento.js?v=3"></script>
 </body>
 </html>
