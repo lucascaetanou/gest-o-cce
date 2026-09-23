@@ -22,7 +22,14 @@ async function loadReferencias() {
 
     if (error) throw error;
 
-    allReferencias = (referencias || []).filter(r => r.municipio_dsei && normStr(r.municipio_dsei) !== 'ceara');
+    // Uma linha por município (a tabela tem duplicatas de Fortaleza e Aquiraz; fica a que tem região de saúde)
+    const porMun = {};
+    (referencias || []).forEach(r => {
+      const k = normStr(r.municipio_dsei).replace(/\s+/g, ' ');
+      if (!k || k === 'ceara') return;
+      if (!porMun[k] || (!porMun[k].regiao_saude && r.regiao_saude)) porMun[k] = r;
+    });
+    allReferencias = Object.values(porMun).sort((a, b) => a.municipio_dsei.localeCompare(b.municipio_dsei, 'pt-BR'));
     window.mapReferencias = referencias || [];
 
     if (!allReferencias.length) {
@@ -86,14 +93,29 @@ function filterReferencias() {
   const ivs = document.getElementById('filterRefIvs')?.value || '';
   const soAbertas = document.getElementById('filterRefAbertas')?.checked;
 
+  const live = liveStats();
   const data = allReferencias.filter(r => {
     if (referenciasTab !== 'Todos' && (r.responsavel || 'Sem responsável') !== referenciasTab) return false;
     if (q && !normStr(`${r.municipio_dsei} ${r.regiao_saude} ${r.macro_regiao}`).includes(q)) return false;
     if (ivs && (r.categoria_ivs || '').trim() !== ivs) return false;
-    if (soAbertas && !((r.vagas_desocupadas || 0) > 0)) return false;
+    if (soAbertas && !(numerosDe(r, live).abertas > 0)) return false;
     return true;
   });
   renderReferenciasTable(data);
+}
+
+// Vagas e ocupação vêm da tabela doctors (ao vivo); se ainda não carregou, usa os números da planilha
+function liveStats() {
+  return (typeof window.getMunicipioStats === 'function' && (window.dashboardAllDoctors || []).length)
+    ? window.getMunicipioStats() : null;
+}
+function numerosDe(r, live) {
+  if (live) {
+    const s = live[normStr(r.municipio_dsei).replace(/\s+/g, ' ')] || { total: 0, ocup: 0, abertas: 0 };
+    return { total: s.total, ocup: s.ocup, abertas: s.abertas, fed: s.fed || 0, copart: s.copart || 0 };
+  }
+  const total = r.total_vagas || 0, abertas = r.vagas_desocupadas || 0;
+  return { total, ocup: Math.max(0, total - abertas), abertas, fed: r.vagas_autorizadas_federal || 0, copart: r.vagas_coparticipacao_municipal || 0 };
 }
 
 function ivsTag(cat) {
@@ -114,16 +136,15 @@ function renderReferenciasTable(data) {
     return;
   }
 
+  const live = liveStats();
   tbody.innerHTML = data.map(r => {
-    const total = r.total_vagas || 0;
-    const desoc = r.vagas_desocupadas || 0;
-    const ocup = Math.max(0, total - desoc);
+    const { total, ocup, abertas: desoc, fed, copart } = numerosDe(r, live);
     return `<tr>
       <td><div class="cell-main">${escapeHTML(titleCase(r.municipio_dsei || '-'))}</div><div class="cell-sub">${escapeHTML(r.macro_regiao || '')}</div></td>
       <td>${escapeHTML(titleCase(r.regiao_saude || '—'))}</td>
       <td class="muted">${escapeHTML(r.responsavel || '—')}</td>
       <td>${ivsTag(r.categoria_ivs)}</td>
-      <td class="r">${fmtNum(total)}<div class="cell-sub">${fmtNum(r.vagas_autorizadas_federal || 0)} fed. · ${fmtNum(r.vagas_coparticipacao_municipal || 0)} mun.</div></td>
+      <td class="r">${fmtNum(total)}<div class="cell-sub">${fmtNum(fed)} fed. · ${fmtNum(copart)} copart.</div></td>
       <td>${total ? occCell(ocup, total) : '<span class="muted">—</span>'}${desoc ? `<div class="cell-sub alert-num">${plural(desoc, 'vaga aberta', 'vagas abertas')}</div>` : ''}</td>
     </tr>`;
   }).join('');

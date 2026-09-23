@@ -15,6 +15,7 @@ async function fetchAllDoctors(selectCols) {
     const { data, error } = await supabaseClient
       .from('doctors')
       .select(cols)
+      .order('id', { ascending: true })
       .range(from, from + size - 1);
     
     if (error) {
@@ -450,6 +451,7 @@ async function fetchCustomDoctorsData(columns) {
     const { data, error } = await supabaseClient
       .from('doctors')
       .select(colsString)
+      .order('id', { ascending: true })
       .range(from, from + size - 1);
     
     if (error) {

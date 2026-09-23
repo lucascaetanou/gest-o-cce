@@ -1,6 +1,6 @@
 // ============================================
 // Gestão CCE — Mapa das regiões de saúde (Leaflet + malha IBGE)
-// Geometria: js/ceara-geo.js. Números: referencias_regionalizadas (já carregada pelo dashboard).
+// Geometria: js/ceara-geo.js. Números: contagem ao vivo da tabela doctors; região/responsável: referencias_regionalizadas.
 // Nenhuma escrita no Supabase acontece aqui.
 // ============================================
 
@@ -28,6 +28,7 @@
   let munLayer = null, cirLayer = null, macroLayer = null, hoverLine = null, hoverId = null, hoverTip = null;
   let ALL = null, mode = 'resp', sel = null;
   let REG = {};          // macro -> agregados
+  let unmapped = [];     // vagas cujo município não existe na malha (ex.: "CEARA")
   let respKey = {};      // responsável -> letra de cor
   let rfTab = 'mun', rfSort = { k: 'abertas', dir: -1 }, rfOnlyOpen = false, rfQuery = '', rfCir = '', rfMedMun = '';
 
@@ -41,8 +42,17 @@
 
   // ---------- Dados ----------
   function buildData(refs) {
+    // Referências: só região/macro/responsável (a tabela tem duplicatas; prefere a linha com região de saúde)
     const byMun = {};
-    (refs || []).forEach(r => { if (r.municipio_dsei) byMun[key(r.municipio_dsei)] = r; });
+    (refs || []).forEach(r => {
+      if (!r.municipio_dsei) return;
+      const k = key(r.municipio_dsei);
+      if (!byMun[k] || (!byMun[k].regiao_saude && r.regiao_saude)) byMun[k] = r;
+    });
+    // Números: contagem ao vivo da tabela doctors
+    const live = typeof window.getMunicipioStats === 'function' ? window.getMunicipioStats(key) : {};
+    const geoKeys = new Set(window.CE_GEO.muns.features.map(f => key(f.properties.nome)));
+    unmapped = Object.entries(live).filter(([k]) => !geoKeys.has(k)).map(([, s]) => s);
 
     // responsável mais frequente de cada macrorregião (para municípios sem linha na tabela)
     const votes = {};
@@ -67,13 +77,11 @@
       p.ref = r;
       p.macroAtual = (r && validMacro(r.macro_regiao)) ? r.macro_regiao.trim() : p.macro;
       p.resp = (r && r.responsavel && validMacro(r.macro_regiao)) ? r.responsavel : respOfMacro(p.macroAtual);
-      const total = r ? (r.total_vagas || 0) : 0;
-      const abertas = r ? (r.vagas_desocupadas || 0) : 0;
-      const ocup = r ? (r.total_medicos_ativos_pmmb != null ? r.total_medicos_ativos_pmmb : Math.max(0, total - abertas)) : 0;
-      p.st = { total, ocup, abertas, emProc: Math.max(0, total - ocup - abertas), semCadastro: !r };
+      const s = live[key(p.nome)] || { total: 0, ocup: 0, abertas: 0, emProc: 0 };
+      p.st = { total: s.total, ocup: s.ocup, abertas: s.abertas, emProc: s.emProc, semCadastro: !r };
 
       const g = REG[p.macroAtual] = REG[p.macroAtual] || { resp: p.resp, total: 0, ocup: 0, abertas: 0, emProc: 0, muns: [] };
-      g.total += total; g.ocup += ocup; g.abertas += abertas; g.emProc += p.st.emProc;
+      g.total += p.st.total; g.ocup += p.st.ocup; g.abertas += p.st.abertas; g.emProc += p.st.emProc;
       g.muns.push(p);
     });
     Object.values(REG).forEach(g => colorFor(g.resp));
@@ -113,8 +121,8 @@
 
   function tip(p) {
     const s = p.st;
-    const nums = s.semCadastro
-      ? '<span class="t">Sem cadastro em referências regionais</span>'
+    const nums = !s.total
+      ? '<span class="t">Nenhuma vaga do programa</span>'
       : `${fmtNum(s.ocup)} médicos · ${fmtNum(s.total)} vagas · ${s.abertas ? `<b class="alert-num">${plural(s.abertas, 'aberta', 'abertas')}</b>` : '<span class="t">sem vagas abertas</span>'}`;
     return `<b>${escapeHTML(p.nome)}</b><div class="t">${escapeHTML(p.cir)} · ${escapeHTML(p.macroAtual)}</div>
       <div class="t">Responsável: <span style="color:var(--ink)">${escapeHTML(p.resp)}</span></div>
@@ -253,7 +261,9 @@
       box.innerHTML = `<div class="empty"><div class="lbl">Macrorregiões</div><div class="hint">Selecione no mapa ou na lista abaixo</div><ul>` +
         rows.map(([m, g]) => `<li data-m="${escapeHTML(m)}" tabindex="0"><i class="sw" style="background:${colorFor(g.resp)}"></i>
           <span><b style="font-weight:600">${escapeHTML(m)}</b><div class="cell-sub">${escapeHTML(g.resp)} · ${plural(g.muns.length, 'município', 'municípios')}</div></span>
-          <span><b class="alert-num">${fmtNum(g.abertas)}</b> <span class="muted">abertas</span></span></li>`).join('') + '</ul></div>';
+          <span><b class="alert-num">${fmtNum(g.abertas)}</b> <span class="muted">abertas</span></span></li>`).join('') + '</ul>' +
+        (unmapped.length ? `<p class="hint" style="margin-top:12px">Fora do mapa: ${unmapped.map(s => `${plural(s.total, 'vaga', 'vagas')} cadastradas como “${escapeHTML(s.nome)}”, sem município (${fmtNum(s.abertas)} ${s.abertas === 1 ? 'aberta' : 'abertas'})`).join('; ')}.</p>` : '') +
+        '</div>';
       box.querySelectorAll('li').forEach(li => {
         li.onclick = () => select(li.dataset.m);
         li.onkeydown = e => { if (e.key === 'Enter') select(li.dataset.m); };

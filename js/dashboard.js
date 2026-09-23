@@ -43,8 +43,9 @@ async function loadDashboardStats() {
     // Renderizar métricas e gráficos com o filtro atual
     renderDashboardWithCurrentFilter();
 
-    // Mapa usa as mesmas referências
+    // Mapa e tela de referências usam as contagens ao vivo por município
     if (typeof window.initCearaMap === 'function') window.initCearaMap(window.dashboardReferencias);
+    if (typeof filterReferencias === 'function' && typeof allReferencias !== 'undefined' && allReferencias.length) filterReferencias();
 
   } catch (error) {
     console.error('Erro ao carregar métricas do dashboard:', error);
@@ -191,6 +192,38 @@ function referenceMatchesRegion(r, selectedRegion) {
   return false;
 }
 
+// Números por município calculados ao vivo a partir da tabela doctors (fonte oficial das vagas).
+// referencias_regionalizadas fica só para região, macrorregião, responsável e IVS: seus totais estão desatualizados.
+function getMunicipioStats(keyFn) {
+  const k = keyFn || (s => normStr(s).replace(/\s+/g, ' '));
+  const stats = {};
+  (window.dashboardAllDoctors || []).forEach(d => {
+    if (d.ativo_inativo !== 'ATIVA' || !d.municipio_atuacao) return;
+    const key = k(d.municipio_atuacao);
+    const s = stats[key] = stats[key] || { nome: d.municipio_atuacao, regiao_saude: d.regiao_saude || '', total: 0, ocup: 0, abertas: 0, emProc: 0, fed: 0, copart: 0 };
+    s.total++;
+    if ((d.modalidade || '').toUpperCase().includes('COPARTICIPACAO')) s.copart++; else s.fed++;
+    if (d.status === 'OCUPADA') s.ocup++;
+    else if (d.status === 'DESOCUPADA') s.abertas++;
+    else if (d.status === 'EM PROCESSO DE OCUPACAO') s.emProc++;
+    if (!s.regiao_saude && d.regiao_saude) s.regiao_saude = d.regiao_saude;
+  });
+  return stats;
+}
+window.getMunicipioStats = getMunicipioStats;
+
+// Linha de referência de cada município (a tabela tem duplicatas; prefere a que tem região de saúde)
+function getReferenciaByMun() {
+  const out = {};
+  (window.dashboardReferencias || []).forEach(r => {
+    const key = normStr(r.municipio_dsei).replace(/\s+/g, ' ');
+    if (!key) return;
+    if (!out[key] || (!out[key].regiao_saude && r.regiao_saude)) out[key] = r;
+  });
+  return out;
+}
+window.getReferenciaByMun = getReferenciaByMun;
+
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
@@ -230,8 +263,7 @@ function renderDashboardWithCurrentFilter() {
   setText('statSecretarios', fmtNum(municipios.size));
   setText('statSecretariosDet', 'com vagas do programa');
 
-  const refsNaRegiao = (window.dashboardReferencias || []).filter(r => referenceMatchesRegion(r, selectedRegion));
-  const munDesoc = refsNaRegiao.filter(r => (r.vagas_desocupadas || 0) > 0).length;
+  const munDesoc = getAlertasRows(selectedRegion).length;
   setText('statMunDesoc', `em ${plural(munDesoc, 'município', 'municípios')}`);
 
   const regiaoTexto = (!selectedRegion || selectedRegion === 'TODAS') ? 'todo o estado' : `macrorregião ${selectedRegion}`;
@@ -387,19 +419,15 @@ function renderAlertasList() {
     more.addEventListener('click', () => { alertasShowAll = !alertasShowAll; renderAlertasList(); });
   }
 
-  let alertas = referencias.filter(r => r.vagas_desocupadas > 0);
-  if (selectedRegion && selectedRegion !== 'TODAS') {
-    alertas = alertas.filter(r => referenceMatchesRegion(r, selectedRegion));
-  }
-
+  const alertas = getAlertasRows(selectedRegion);
   const sortMethod = sortSelect ? sortSelect.value : 'desc';
   alertas.sort((a, b) => {
-    if (sortMethod === 'asc') return (a.vagas_desocupadas || 0) - (b.vagas_desocupadas || 0);
-    if (sortMethod === 'alpha') return (a.municipio_dsei || '').localeCompare(b.municipio_dsei || '');
-    return (b.vagas_desocupadas || 0) - (a.vagas_desocupadas || 0) || (a.municipio_dsei || '').localeCompare(b.municipio_dsei || '');
+    if (sortMethod === 'asc') return a.abertas - b.abertas;
+    if (sortMethod === 'alpha') return a.nome.localeCompare(b.nome, 'pt-BR');
+    return b.abertas - a.abertas || a.nome.localeCompare(b.nome, 'pt-BR');
   });
 
-  const totalAbertas = alertas.reduce((s, a) => s + (a.vagas_desocupadas || 0), 0);
+  const totalAbertas = alertas.reduce((s, a) => s + a.abertas, 0);
   setText('alertasCount', `${plural(alertas.length, 'município', 'municípios')} · ${plural(totalAbertas, 'vaga', 'vagas')}`);
 
   if (alertas.length === 0) {
@@ -410,26 +438,37 @@ function renderAlertasList() {
 
   const LIMIT = 10;
   const visible = alertasShowAll ? alertas : alertas.slice(0, LIMIT);
-  container.innerHTML = visible.map(a => {
-    const total = a.total_vagas || 0;
-    const desoc = a.vagas_desocupadas || 0;
-    const ocup = a.total_medicos_ativos_pmmb != null ? a.total_medicos_ativos_pmmb : Math.max(0, total - desoc);
-    const mun = a.municipio_dsei || '-';
-    return `<tr>
-      <td class="cell-main">${escapeHTML(titleCase(mun))}</td>
-      <td class="muted">${escapeHTML(titleCase(a.regiao_saude || a.macro_regiao || '-'))}</td>
-      <td class="r">${fmtNum(total)}</td>
-      <td>${occCell(ocup, total)}</td>
-      <td class="r"><b class="alert-num">${fmtNum(desoc)}</b></td>
-      <td class="r"><button class="lnk" type="button" onclick="window.filtrarMedicosPorMunicipio(decodeURIComponent('${encodeURIComponent(mun)}'))">Ver médicos</button></td>
-    </tr>`;
-  }).join('');
+  container.innerHTML = visible.map(a => `<tr>
+      <td class="cell-main">${escapeHTML(a.semMunicipio ? 'Sem município (CEARA)' : titleCase(a.nome))}</td>
+      <td class="muted">${escapeHTML(titleCase(a.regiao || '—'))}</td>
+      <td class="r">${fmtNum(a.total)}</td>
+      <td>${occCell(a.ocup, a.total)}</td>
+      <td class="r"><b class="alert-num">${fmtNum(a.abertas)}</b></td>
+      <td class="r"><button class="lnk" type="button" onclick="window.filtrarMedicosPorMunicipio(decodeURIComponent('${encodeURIComponent(a.nome)}'))">Ver médicos</button></td>
+    </tr>`).join('');
 
   if (foot) {
     foot.hidden = alertas.length <= LIMIT;
     setText('alertasFootText', alertasShowAll ? `Mostrando todos os ${alertas.length}` : `Mostrando ${LIMIT} de ${alertas.length}`);
     if (more) more.textContent = alertasShowAll ? 'Mostrar menos' : 'Ver todos';
   }
+}
+
+// Municípios com vagas abertas na região (números da tabela doctors; região vem das referências)
+function getAlertasRows(selectedRegion) {
+  const refs = getReferenciaByMun();
+  return Object.entries(getMunicipioStats())
+    .filter(([, s]) => s.abertas > 0)
+    .map(([key, s]) => {
+      const ref = refs[key];
+      return {
+        nome: s.nome, total: s.total, ocup: s.ocup, abertas: s.abertas,
+        regiao: (ref && ref.regiao_saude) || s.regiao_saude || (ref && ref.macro_regiao) || '',
+        semMunicipio: key === 'ceara',
+        ref: ref || { municipio_dsei: s.nome, regiao_saude: s.regiao_saude }
+      };
+    })
+    .filter(a => !selectedRegion || selectedRegion === 'TODAS' || referenceMatchesRegion(a.ref, selectedRegion));
 }
 
 // Ação Rápida: Ir para aba de médicos filtrada por município
