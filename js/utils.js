@@ -225,3 +225,18 @@ window.fmtNum = fmtNum;
 window.setNavCount = setNavCount;
 window.statusTag = statusTag;
 
+
+// --- Tipos de perfil de usuário (espelham profiles.role no Supabase) ---
+const PROFILE_TYPES = {
+  ADMIN: { label: 'Admin master', tag: 'info' },
+  MIN_SAUDE: { label: 'Ministério da Saúde', tag: 'ok' },
+  MIN_EDUCACAO: { label: 'Ministério da Educação', tag: 'info' },
+  USER: { label: 'Sem perfil definido', tag: 'plain' }
+};
+// Perfis que o admin master pode atribuir a um cadastro
+const ASSIGNABLE_PROFILE_TYPES = ['MIN_SAUDE', 'MIN_EDUCACAO'];
+
+function getProfileTypeLabel(role) {
+  const key = (role || '').toUpperCase();
+  return (PROFILE_TYPES[key] || PROFILE_TYPES.USER).label;
+}
