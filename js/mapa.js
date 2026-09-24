@@ -285,7 +285,7 @@
         <div><div class="hint">Médicos ativos</div><div class="v">${fmtNum(g.ocup)}</div></div>
         <div><div class="hint">Vagas abertas</div><div class="v alert-num">${fmtNum(g.abertas)}</div></div>
         <div><div class="hint">Ocupação</div><div class="v">${occ.toFixed(0)}%</div><div class="bar" style="margin-top:6px"><i style="width:${occ}%"></i></div></div>
-        <div><div class="hint">Processos em aberto</div><div class="v">${fmtNum(openProcs)}</div></div>
+        ${canViewProcessos() ? `<div><div class="hint">Processos em aberto</div><div class="v">${fmtNum(openProcs)}</div></div>` : ''}
       </div>
       <div class="lbl">Municípios com mais vagas abertas</div>
       <ol>${top.length ? top.map(p => `<li><span>${escapeHTML(p.nome)}<span class="muted"> · ${escapeHTML(p.cir.split(' ')[0])}</span></span><span class="alert-num">${plural(p.st.abertas, 'aberta', 'abertas')}</span></li>`).join('') : '<li><span class="muted">Nenhuma vaga aberta</span></li>'}</ol>
@@ -321,7 +321,9 @@
     document.getElementById('rfTitle').textContent = 'Relatório · ' + sel;
     document.getElementById('rfMeta').textContent = `Responsável: ${g.resp} · ${plural(g.muns.length, 'município', 'municípios')} · ${plural(new Set(g.muns.map(p => p.cir)).size, 'região de saúde', 'regiões de saúde')}`;
     document.getElementById('rfcMun').textContent = g.muns.length;
-    document.getElementById('rfcProc').textContent = procs.length;
+    const rfcProc = document.getElementById('rfcProc');
+    if (rfcProc) rfcProc.textContent = procs.length;
+    if (rfTab === 'proc' && !canViewProcessos()) rfTab = 'mun';
     document.getElementById('rfcMed').textContent = fmtNum(docs.filter(d => d.status === 'OCUPADA').length);
     document.querySelectorAll('#rfTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === rfTab));
     ({ mun: rfMun, proc: rfProc, med: rfMed })[rfTab](g, procs, docs);
@@ -343,7 +345,8 @@
     rows.sort((a, b) => (typeof a[k] === 'string' ? a[k].localeCompare(b[k], 'pt-BR') : a[k] - b[k]) * dir || a.nome.localeCompare(b.nome, 'pt-BR'));
     const tot = rows.reduce((a, r) => ({ vagas: a.vagas + r.vagas, ocup: a.ocup + r.ocup, abertas: a.abertas + r.abertas, emProc: a.emProc + r.emProc, proc: a.proc + r.proc }), { vagas: 0, ocup: 0, abertas: 0, emProc: 0, proc: 0 });
     const th = (kk, label, cls = '') => `<th class="${cls} sortable" data-k="${kk}" aria-sort="${k === kk ? (dir > 0 ? 'ascending' : 'descending') : 'none'}">${label}${k === kk ? ` <i class="fas fa-arrow-${dir > 0 ? 'up' : 'down'}" style="font-size:10px"></i>` : ''}</th>`;
-    const cols = showEmProc ? 8 : 7;
+    const showProc = canViewProcessos();
+    const cols = 6 + (showEmProc ? 1 : 0) + (showProc ? 1 : 0);
 
     document.getElementById('rfBody').innerHTML = `
       <div class="filters">
@@ -353,7 +356,7 @@
         <span class="spacer"></span><span class="hint">${rows.length} de ${g.muns.length} municípios</span>
       </div>
       <div class="tbl"><table>
-        <thead><tr>${th('nome', 'Município')}${th('cir', 'Região de saúde')}${th('vagas', 'Vagas', 'r')}${th('ocup', 'Ocupadas', 'r')}${th('occ', 'Ocupação')}${th('abertas', 'Abertas', 'r')}${showEmProc ? th('emProc', 'Em ocupação', 'r') : ''}${th('proc', 'Processos', 'r')}</tr></thead>
+        <thead><tr>${th('nome', 'Município')}${th('cir', 'Região de saúde')}${th('vagas', 'Vagas', 'r')}${th('ocup', 'Ocupadas', 'r')}${th('occ', 'Ocupação')}${th('abertas', 'Abertas', 'r')}${showEmProc ? th('emProc', 'Em ocupação', 'r') : ''}${showProc ? th('proc', 'Processos', 'r') : ''}</tr></thead>
         <tbody>${rows.map(r => `<tr class="click" data-m="${escapeHTML(r.nome)}" title="Ver médicos de ${escapeHTML(r.nome)}">
           <td class="cell-main">${escapeHTML(r.nome)}${r.semCadastro ? ' <span class="tag warn" title="Município sem linha em referências regionais">sem cadastro</span>' : ''}</td>
           <td class="muted">${escapeHTML(r.cir)}</td>
@@ -361,8 +364,8 @@
           <td>${r.vagas ? occCell(r.ocup, r.vagas) : '<span class="muted">—</span>'}</td>
           <td class="r">${r.abertas ? `<b class="alert-num">${fmtNum(r.abertas)}</b>` : '<span class="muted">0</span>'}</td>
           ${showEmProc ? `<td class="r">${r.emProc ? fmtNum(r.emProc) : '<span class="muted">0</span>'}</td>` : ''}
-          <td class="r">${r.proc ? fmtNum(r.proc) : '<span class="muted">0</span>'}</td></tr>`).join('') || `<tr><td colspan="${cols}"><div class="empty-state">Nenhum município com esses filtros</div></td></tr>`}</tbody>
-        <tfoot><tr><td colspan="2">Total</td><td class="r">${fmtNum(tot.vagas)}</td><td class="r">${fmtNum(tot.ocup)}</td><td>${tot.vagas ? occCell(tot.ocup, tot.vagas) : ''}</td><td class="r alert-num">${fmtNum(tot.abertas)}</td>${showEmProc ? `<td class="r">${fmtNum(tot.emProc)}</td>` : ''}<td class="r">${fmtNum(tot.proc)}</td></tr></tfoot>
+          ${showProc ? `<td class="r">${r.proc ? fmtNum(r.proc) : '<span class="muted">0</span>'}</td>` : ''}</tr>`).join('') || `<tr><td colspan="${cols}"><div class="empty-state">Nenhum município com esses filtros</div></td></tr>`}</tbody>
+        <tfoot><tr><td colspan="2">Total</td><td class="r">${fmtNum(tot.vagas)}</td><td class="r">${fmtNum(tot.ocup)}</td><td>${tot.vagas ? occCell(tot.ocup, tot.vagas) : ''}</td><td class="r alert-num">${fmtNum(tot.abertas)}</td>${showEmProc ? `<td class="r">${fmtNum(tot.emProc)}</td>` : ''}${showProc ? `<td class="r">${fmtNum(tot.proc)}</td>` : ''}</tr></tfoot>
       </table></div>`;
 
     const body = document.getElementById('rfBody');
@@ -447,10 +450,11 @@
   function exportRegion() {
     if (!sel) return;
     const pm = procsByMun();
+    const showProc = canViewProcessos();
     const rows = REG[sel].muns.map(p => ({
       macro_regiao: sel, responsavel: REG[sel].resp, regiao_saude: p.cir, municipio: p.nome,
       total_vagas: p.st.total, ocupadas: p.st.ocup, vagas_abertas: p.st.abertas, em_ocupacao: p.st.emProc,
-      processos_administrativos: (pm[key(p.nome)] || []).length
+      ...(showProc ? { processos_administrativos: (pm[key(p.nome)] || []).length } : {})
     })).sort((a, b) => a.municipio.localeCompare(b.municipio, 'pt-BR'));
     const headers = Object.keys(rows[0]);
     downloadCSV(convertToCSV(rows, headers), `relatorio_regiao_${normStr(sel).replace(/[^a-z0-9]+/g, '_')}.csv`);
