@@ -71,6 +71,7 @@
           <div class="admin-avatar">
             <div class="avatar-circle" id="adminInitials" aria-hidden="true">·</div>
             <span id="adminName">Admin</span>
+            <span class="tag plain" id="adminRole" hidden></span>
           </div>
         </div>
       </header>
@@ -462,13 +463,13 @@
         <!-- ================= CONTAS DE ACESSO ================= -->
         <div id="sectionUsers" class="section">
           <div class="pagehead">
-            <div><h1>Contas de acesso</h1><p>Aprovar ou recusar pedidos de acesso ao painel</p></div>
+            <div><h1>Contas de acesso</h1><p>Aprovar ou recusar pedidos de acesso e definir o tipo de perfil de cada usuário</p></div>
             <div class="actions"><button class="btn" id="btnRefresh" type="button"><i class="fas fa-rotate"></i>Atualizar</button></div>
           </div>
           <section class="panel">
             <div class="tbl"><table class="data-table">
-              <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Situação</th><th class="r">Ações</th></tr></thead>
-              <tbody id="usersTableBody"><tr><td colspan="5" class="loading-cell">Carregando usuários…</td></tr></tbody>
+              <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Perfil</th><th>Situação</th><th class="r">Ações</th></tr></thead>
+              <tbody id="usersTableBody"><tr><td colspan="6" class="loading-cell">Carregando usuários…</td></tr></tbody>
             </table></div>
           </section>
         </div>
@@ -674,7 +675,7 @@
   <script src="js/auth.js?v=40"></script>
 
   <!-- Módulos -->
-  <script src="js/utils.js?v=40"></script>
+  <script src="js/utils.js?v=41"></script>
   <script src="js/medicos.js?v=40"></script>
   <script src="js/dashboard.js?v=40"></script>
   <script src="js/ceara-geo.js?v=1"></script>
@@ -686,9 +687,9 @@
   <script src="js/secretarios.js?v=40"></script>
   <script src="js/cce.js?v=40"></script>
   <script src="js/processos.js?v=40"></script>
-  <script src="js/users.js?v=40"></script>
+  <script src="js/users.js?v=41"></script>
 
   <!-- Orquestrador -->
-  <script src="js/admin.js?v=40"></script>
+  <script src="js/admin.js?v=41"></script>
 </body>
 </html>

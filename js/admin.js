@@ -294,6 +294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentProfile = profile;
     currentUserIsAdmin = profile.role === 'ADMIN';
     window.currentUserIsAdmin = currentUserIsAdmin;
+    window.currentUserRole = profile.role;
 
     if (!currentUserIsAdmin) {
       document.getElementById('navUsers')?.remove();
@@ -317,6 +318,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const parts = currentProfile.name.trim().split(/\s+/);
       initials.textContent = ((parts[0] || '')[0] || '').concat(parts.length > 1 ? parts[parts.length - 1][0] : '').toUpperCase();
     }
+  }
+  const adminRole = document.getElementById('adminRole');
+  if (adminRole && currentProfile) {
+    adminRole.textContent = getProfileTypeLabel(currentProfile.role);
+    adminRole.hidden = false;
   }
 
   // 4. Logout
