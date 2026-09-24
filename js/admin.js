@@ -25,7 +25,8 @@ let currentUserIsAdmin = false;
 // Função Universal de Navegação SPA com Histórico do Navegador
 function navigateToRoute(routeKey, updateHistory = true) {
   let normalizedKey = (routeKey || '').replace(/^#\/?/, '').toLowerCase().trim();
-  if (normalizedKey === 'users' && !currentUserIsAdmin) {
+  if ((normalizedKey === 'users' && !currentUserIsAdmin) ||
+      (normalizedKey === 'processos' && !canViewProcessos())) {
     normalizedKey = 'dashboard';
   }
   const config = ROUTE_MAP[normalizedKey] || ROUTE_MAP['dashboard'];
@@ -300,6 +301,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('navUsers')?.remove();
       document.getElementById('sectionUsers')?.remove();
     }
+
+    if (!canViewProcessos()) {
+      removeProcessosUI();
+    }
   } catch (err) {
     console.error('Erro de validação de acesso:', err);
     window.location.replace('index.html');
@@ -355,8 +360,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadMateriais();
   setupMateriaisLogic();
 
-  loadProcessos();
-  setupProcessosLogic();
+  if (canViewProcessos()) {
+    loadProcessos();
+    setupProcessosLogic();
+  }
 
   if (currentUserIsAdmin) loadUsers();
 
@@ -370,6 +377,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btnRefreshMedicos')?.addEventListener('click', () => loadMedicos());
   document.getElementById('btnRefreshReferencias')?.addEventListener('click', () => loadReferencias());
 });
+
+// Remove da tela tudo o que envolve processos administrativos (perfis sem acesso)
+function removeProcessosUI() {
+  delete ROUTE_MAP.processos;
+  [
+    'navProcessos',
+    'sectionProcessos',
+    'modalProcesso',
+    'modalNovoProcesso'
+  ].forEach(id => document.getElementById(id)?.remove());
+  document.getElementById('processInsightsTitle')?.closest('section')?.remove();
+  document.querySelector('#rfTabs button[data-t="proc"]')?.remove();
+  document.getElementById('mapProcessSummary')?.remove();
+}
 
 // Alternador de Tema Claro / Escuro (claro é o padrão; o tema é aplicado no <head> antes da pintura)
 function setupThemeToggle() {

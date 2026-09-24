@@ -29,7 +29,7 @@ async function loadDashboardStats() {
       window.dashboardReferencias = referencias || [];
     }
 
-    if (window.dashboardProcessos.length === 0) {
+    if (canViewProcessos() && window.dashboardProcessos.length === 0) {
       const { data: processos, error: processosError } = await supabaseClient
         .from('processos_administrativos')
         .select('id,municipio,tipo_demanda,descricao_demanda,interessado,status_processo,equipe_responsavel,data_recebimento,data_ultima_movimentacao,created_at');
@@ -351,6 +351,7 @@ function renderRankList(containerId, entries, onClick, emptyText) {
 }
 
 function renderProcessInsights() {
+  if (!canViewProcessos()) return;
   const selectedRegion = window.dashboardSelectedRegion;
   const cityToMacroMap = getCityToMacroMap();
   const all = window.dashboardProcessos || [];

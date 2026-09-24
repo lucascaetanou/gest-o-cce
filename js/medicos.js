@@ -257,7 +257,8 @@ async function viewMedicoDetails(id) {
     if (error) throw error;
 
     // Garantir que temos processosData carregado
-    if (!window.processosData || window.processosData.length === 0) {
+    const showProcessos = canViewProcessos();
+    if (showProcessos && (!window.processosData || window.processosData.length === 0)) {
       try {
         const { data: pData } = await supabaseClient.from('processos_administrativos').select('*').order('created_at', { ascending: false });
         window.processosData = pData || [];
@@ -268,7 +269,9 @@ async function viewMedicoDetails(id) {
 
     // Buscar processos relacionados por nome do médico (insensível a acentos)
     const docName = (medico.nome_profissional || '').trim();
-    const processosRelacionados = (window.processosData || []).filter(p => matchMedicoProcesso(docName, p));
+    const processosRelacionados = showProcessos
+      ? (window.processosData || []).filter(p => matchMedicoProcesso(docName, p))
+      : [];
 
     if (title) title.textContent = medico.nome_profissional || 'Vaga sem profissional';
     const vaga = medico.status === 'EM PROCESSO DE OCUPACAO' ? 'Em processo' : medico.status;
@@ -331,8 +334,8 @@ async function viewMedicoDetails(id) {
         ['Telefone', medico.telefone],
         ['Banco', `${medico.banco || '—'} · Ag. ${maskBankAccount(medico.agencia_bancaria)} · Cc. ${maskBankAccount(medico.conta_bancaria)}`]
       ])}
-      <div class="dsec">Processos administrativos relacionados <span class="tag plain">${processosRelacionados.length}</span></div>
-      ${processosHtml}
+      ${showProcessos ? `<div class="dsec">Processos administrativos relacionados <span class="tag plain">${processosRelacionados.length}</span></div>
+      ${processosHtml}` : ''}
     `;
   } catch (err) {
     console.error(err);

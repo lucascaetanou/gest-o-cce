@@ -240,3 +240,10 @@ function getProfileTypeLabel(role) {
   const key = (role || '').toUpperCase();
   return (PROFILE_TYPES[key] || PROFILE_TYPES.USER).label;
 }
+
+// Perfis com acesso a processos administrativos (Ministério da Educação não tem)
+const PROCESSOS_PROFILE_TYPES = ['ADMIN', 'MIN_SAUDE'];
+
+function canViewProcessos() {
+  return PROCESSOS_PROFILE_TYPES.includes((window.currentUserRole || '').toUpperCase());
+}
